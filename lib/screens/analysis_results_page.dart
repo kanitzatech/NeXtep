@@ -911,9 +911,13 @@ class _AnalysisResultsPageState extends State<AnalysisResultsPage> {
   List<Recommendation> _sortRecommendationList(List<Recommendation> items) {
     final sorted = List<Recommendation>.from(items)
       ..sort((a, b) {
-        final cutoffCompare = a.cutoff.compareTo(b.cutoff);
-        if (cutoffCompare != 0) {
-          return cutoffCompare;
+        final byProbability = b.probability.compareTo(a.probability);
+        if (byProbability != 0) {
+          return byProbability;
+        }
+        final byCutoff = b.cutoff.compareTo(a.cutoff);
+        if (byCutoff != 0) {
+          return byCutoff;
         }
         return a.collegeName
             .toLowerCase()

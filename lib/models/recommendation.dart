@@ -2,6 +2,7 @@ class Recommendation {
   final String collegeName;
   final String courseName;
   final double cutoff;
+  final double maxCutoff;
   final int probability;
   final String category;
   final String? district;
@@ -12,6 +13,7 @@ class Recommendation {
     required this.collegeName,
     required this.courseName,
     required this.cutoff,
+    this.maxCutoff = 0.0,
     required this.probability,
     required this.category,
     this.district,
@@ -51,6 +53,8 @@ class Recommendation {
           _readInt(json, const ['college_rank', 'collegeRank', 'rank']),
       cutoff: _readDouble(
           json, const ['cutoff', 'closing_cutoff', 'closingCutoff', 'oc_min']),
+      maxCutoff: _readDouble(
+          json, const ['max_cutoff', 'maxCutoff', 'opening_cutoff', 'openingCutoff']),
       probability: _readProbability(
           json, const ['probability', 'score', 'match_score', 'matchScore']),
       category: parsedCategory ?? 'unknown',

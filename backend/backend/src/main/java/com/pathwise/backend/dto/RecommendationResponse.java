@@ -14,6 +14,7 @@ public class RecommendationResponse {
     private String district;
     private String collegeType;
     private Double cutoff;
+    private Double maxCutoff;
     private Integer probability;
     private String category;
 

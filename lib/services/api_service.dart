@@ -45,21 +45,21 @@ class ApiService {
     }
 
     if (kIsWeb) {
-      candidates.add(_cloudRunBaseUrl);
       candidates.add('http://localhost:8080');
+      candidates.add(_cloudRunBaseUrl);
       return candidates;
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      candidates.add(_cloudRunBaseUrl);
       candidates.add(_androidEmulatorBaseUrl);
       candidates.add('http://$_realDeviceHost:8080');
+      candidates.add(_cloudRunBaseUrl);
       return candidates;
     }
 
-    candidates.add(_cloudRunBaseUrl);
-    candidates.add('http://$_realDeviceHost:8080');
     candidates.add('http://localhost:8080');
+    candidates.add('http://$_realDeviceHost:8080');
+    candidates.add(_cloudRunBaseUrl);
     return candidates;
   }
 
@@ -151,6 +151,10 @@ class ApiService {
     List<String> preferredCollegeIds = const [],
     List<String> preferredCollegeNames = const [],
   }) async {
+    // DON'T send district to backend — get ALL colleges.
+    // The frontend applies district filter ONLY to Safe colleges,
+    // so Preferred colleges (user's explicit picks) are always included
+    // regardless of location.
     final body = <String, dynamic>{
       'student_cutoff': cutoff,
       'category': category.trim().toUpperCase(),
@@ -159,11 +163,12 @@ class ApiService {
     };
 
     final normalizedDistrict = district?.trim();
-    if (normalizedDistrict != null &&
-        normalizedDistrict.isNotEmpty &&
-        normalizedDistrict.toLowerCase() != 'any') {
-      body['district'] = normalizedDistrict;
-    }
+    final effectiveDistrict =
+        (normalizedDistrict != null &&
+                normalizedDistrict.isNotEmpty &&
+                normalizedDistrict.toLowerCase() != 'any')
+            ? normalizedDistrict
+            : null;
 
     Object? lastError;
     for (final base in _orderedBaseCandidates()) {
@@ -191,7 +196,9 @@ class ApiService {
           );
           final result = _enforceRecommendationRules(
             parsed,
+            studentCutoff: cutoff,
             preferredCourse: preferredCourse,
+            district: effectiveDistrict,
             preferredCollegeIds: preferredCollegeIds,
             preferredCollegeNames: preferredCollegeNames,
           );
@@ -208,7 +215,7 @@ class ApiService {
             category: category,
             cutoff: cutoff,
             preferredCourse: preferredCourse,
-            district: normalizedDistrict,
+            district: null,
             preferredCollegeIds: preferredCollegeIds,
             preferredCollegeNames: preferredCollegeNames,
           );
@@ -217,7 +224,9 @@ class ApiService {
             _preferredBaseUrl = _normalizeBaseUrl(base);
             return _enforceRecommendationRules(
               legacy,
+              studentCutoff: cutoff,
               preferredCourse: preferredCourse,
+              district: effectiveDistrict,
               preferredCollegeIds: preferredCollegeIds,
               preferredCollegeNames: preferredCollegeNames,
             );
@@ -447,6 +456,10 @@ class ApiService {
     return [];
   }
 
+  /// Parse the backend's grouped response.
+  /// IGNORE the backend's preferred/safe classification.
+  /// Merge everything into safeColleges as a flat list — the frontend
+  /// applies its own classification based on user's explicit selections.
   RecommendationResult _parseGroupedRecommendations(dynamic decoded) {
     if (decoded is! Map) {
       return const RecommendationResult.empty();
@@ -454,38 +467,35 @@ class ApiService {
 
     final map = Map<String, dynamic>.from(decoded);
 
-    List<Recommendation> parseList(dynamic rawList, String forcedCategory) {
+    List<Recommendation> parseList(dynamic rawList) {
       if (rawList is! List) {
         return const [];
       }
 
       return rawList.whereType<Map>().map((entry) {
-        final jsonEntry = Map<String, dynamic>.from(entry);
-        jsonEntry['category'] = forcedCategory;
-        jsonEntry['recommendation_type'] = forcedCategory;
-        return Recommendation.fromJson(jsonEntry);
+        return Recommendation.fromJson(Map<String, dynamic>.from(entry));
       }).toList();
     }
 
-    final preferred = parseList(
-      map['preferred_colleges'] ?? map['preferredColleges'] ?? const [],
-      'preferred',
-    );
+    // Merge all colleges from both backend buckets into one flat list.
+    final all = <Recommendation>[
+      ...parseList(map['preferred_colleges'] ?? map['preferredColleges']),
+      ...parseList(map['safe_colleges'] ?? map['safeColleges']),
+    ];
 
-    final safe = parseList(
-      map['safe_colleges'] ?? map['safeColleges'] ?? const [],
-      'safe',
-    );
-
+    // Put everything in safeColleges. The frontend's _enforceRecommendationRules
+    // will split into Preferred (user-selected) and Safe (rest).
     return RecommendationResult(
-      preferredColleges: preferred,
-      safeColleges: safe,
+      preferredColleges: const [],
+      safeColleges: all,
     );
   }
 
   RecommendationResult _enforceRecommendationRules(
     RecommendationResult source, {
+    double? studentCutoff,
     required String preferredCourse,
+    String? district,
     List<String> preferredCollegeIds = const [],
     List<String> preferredCollegeNames = const [],
   }) {
@@ -494,8 +504,15 @@ class ApiService {
       return source;
     }
 
+    // Recalculate probabilities if backend is outdated (no maxCutoff).
+    final corrected = _correctProbabilities(
+      source.all,
+      studentCutoff: studentCutoff,
+    );
+
+    // Deduplicate and filter to requested branch.
     final deduped = <String, Recommendation>{};
-    for (final item in source.all) {
+    for (final item in corrected) {
       final itemBranch = _resolveBranchCode(item.courseName);
       if (itemBranch == null || itemBranch != requestedBranchCode) {
         continue;
@@ -511,75 +528,180 @@ class ApiService {
 
     final all = deduped.values.toList();
 
-    final preferredTokens = {
-      ...preferredCollegeIds.map(_normalizeToken),
-      ...preferredCollegeNames.map(_normalizeToken),
-    }.where((value) => value.isNotEmpty).toSet();
+    // Build tokens from the USER's EXPLICIT selections only.
+    final preferredNameTokens = preferredCollegeNames
+        .map(_normalizeToken)
+        .where((value) => value.isNotEmpty)
+        .toList(); // Keep as list to preserve order.
 
-    int compareByPriority(Recommendation a, Recommendation b) {
+    // Sort preferred by probability (highest first).
+    int compareByProbability(Recommendation a, Recommendation b) {
       final byProbability = b.probability.compareTo(a.probability);
-      if (byProbability != 0) {
-        return byProbability;
-      }
-      final byCutoff = b.cutoff.compareTo(a.cutoff);
-      if (byCutoff != 0) {
-        return byCutoff;
-      }
+      if (byProbability != 0) return byProbability;
       return a.collegeName.toLowerCase().compareTo(b.collegeName.toLowerCase());
     }
 
-    bool isSelectedPreferred(Recommendation item) {
+    // Sort safe by COLLEGE TIER (highest cutoff = best college first).
+    // For a student with 196, this puts PSG/MIT/CEG first, not Jerusalem.
+    int compareByCollegeTier(Recommendation a, Recommendation b) {
+      // Primary: highest opening cutoff (maxCutoff) = top-tier college.
+      final byMax = b.maxCutoff.compareTo(a.maxCutoff);
+      if (byMax != 0) return byMax;
+      // Secondary: closing cutoff.
+      final byMin = b.cutoff.compareTo(a.cutoff);
+      if (byMin != 0) return byMin;
+      // Tertiary: probability.
+      return b.probability.compareTo(a.probability);
+    }
+
+    /// Match user-selected colleges with backend recommendations.
+    /// Uses multiple strategies: exact match → prefix match → significant overlap.
+    bool isUserSelected(Recommendation item) {
+      if (preferredNameTokens.isEmpty) {
+        return false;
+      }
+
       final collegeToken = _normalizeToken(item.collegeName);
       if (collegeToken.isEmpty) {
         return false;
       }
 
-      for (final token in preferredTokens) {
-        if (token.isEmpty) {
-          continue;
-        }
+      for (final token in preferredNameTokens) {
+        if (token.isEmpty) continue;
 
-        if (collegeToken == token ||
-            collegeToken.contains(token) ||
-            token.contains(collegeToken)) {
-          return true;
+        // Strategy 1: Exact match after normalization.
+        if (collegeToken == token) return true;
+
+        // Strategy 2: One starts with the other (handles name truncation/extras).
+        // Minimum 15 chars to prevent short names like 'mit' from matching.
+        if (token.length >= 15 && collegeToken.startsWith(token)) return true;
+        if (collegeToken.length >= 15 && token.startsWith(collegeToken)) return true;
+
+        // Strategy 3: Significant substring overlap (one contains the other).
+        // Both must be substantial (>=20 chars) and shorter >= 50% of longer.
+        if (token.length >= 20 && collegeToken.length >= 20) {
+          if (collegeToken.contains(token) || token.contains(collegeToken)) {
+            final shorter = token.length < collegeToken.length ? token : collegeToken;
+            final longer = token.length < collegeToken.length ? collegeToken : token;
+            if (shorter.length >= longer.length * 0.5) {
+              return true;
+            }
+          }
         }
       }
 
       return false;
     }
 
-    final mandatoryPreferredKeys = <String>{
-      ...source.preferredColleges
-          .where((item) =>
-              _resolveBranchCode(item.courseName) == requestedBranchCode)
-          .map((item) =>
-              '${_normalizeToken(item.collegeName)}|${_normalizeToken(item.courseName)}'),
-      ...all.where(isSelectedPreferred).map((item) =>
+    // PREFERRED = ONLY colleges the user explicitly selected (max 5).
+    // NOT filtered by district — user's picks always appear regardless of location.
+    final userSelectedKeys = <String>{
+      ...all.where(isUserSelected).map((item) =>
           '${_normalizeToken(item.collegeName)}|${_normalizeToken(item.courseName)}'),
     };
 
     final preferred = all.where((item) {
       final key =
           '${_normalizeToken(item.collegeName)}|${_normalizeToken(item.courseName)}';
-      return mandatoryPreferredKeys.contains(key) || item.probability >= 70;
+      return userSelectedKeys.contains(key);
     }).toList()
-      ..sort(compareByPriority);
+      ..sort(compareByProbability);
 
+    // Normalize district for safe section filtering.
+    final districtToken = district != null ? _normalizeToken(district) : null;
+
+    // SAFE = remaining colleges filtered by district, sorted by COLLEGE TIER,
+    // capped at 15. Shows the BEST colleges the student can realistically get.
     final safe = all.where((item) {
       final key =
           '${_normalizeToken(item.collegeName)}|${_normalizeToken(item.courseName)}';
-      if (mandatoryPreferredKeys.contains(key)) {
+      if (userSelectedKeys.contains(key)) {
         return false;
       }
-      return item.probability >= 40 && item.probability <= 69;
+      if (item.probability < 30) {
+        return false;
+      }
+      // Apply district filter ONLY to safe colleges.
+      if (districtToken != null && districtToken.isNotEmpty) {
+        final itemDistrict = _normalizeToken(item.district ?? '');
+        if (itemDistrict.isEmpty) return true; // Include if college has no district info.
+        return itemDistrict.contains(districtToken) ||
+            districtToken.contains(itemDistrict);
+      }
+      return true;
     }).toList()
-      ..sort(compareByPriority);
+      ..sort(compareByCollegeTier);
 
     return RecommendationResult(
       preferredColleges: preferred,
       safeColleges: safe.take(15).toList(),
     );
+  }
+
+  /// Correct probabilities based on backend version.
+  ///
+  /// If the backend sends maxCutoff > 0 (new deployed backend):
+  ///   → TRUST the backend probability. It uses both max and min cutoffs
+  ///     with the correct zone-based formula.
+  ///
+  /// If maxCutoff == 0 (old Cloud Run backend):
+  ///   → Recalculate using the fallback single-cutoff formula.
+  List<Recommendation> _correctProbabilities(
+    List<Recommendation> source, {
+    double? studentCutoff,
+  }) {
+    if (source.isEmpty || studentCutoff == null || studentCutoff <= 0) {
+      return source;
+    }
+
+    return source.map((item) {
+      if (item.cutoff <= 0 && item.maxCutoff <= 0) {
+        return item;
+      }
+
+      // If maxCutoff is available, the backend already computed
+      // accurate probability using both max and min — trust it.
+      if (item.maxCutoff > 0) {
+        return item;
+      }
+
+      // Old backend — no maxCutoff. Use fallback formula.
+      final corrected = _fallbackSingleCutoffProbability(
+        studentCutoff,
+        item.cutoff,
+      );
+
+      return Recommendation(
+        collegeName: item.collegeName,
+        courseName: item.courseName,
+        cutoff: item.cutoff,
+        maxCutoff: item.maxCutoff,
+        probability: corrected,
+        category: corrected >= 70 ? 'preferred' : (corrected >= 40 ? 'safe' : 'low'),
+        district: item.district,
+        collegeType: item.collegeType,
+        collegeRank: item.collegeRank,
+      );
+    }).toList();
+  }
+
+  /// Fallback when only one cutoff value is available (old Cloud Run backend).
+  /// Uses quality factor based on student's overall position on 200-mark scale.
+  int _fallbackSingleCutoffProbability(double studentCutoff, double collegeCutoff) {
+    final studentPct = (studentCutoff / 200.0).clamp(0.0, 1.0);
+    final collegePct = (collegeCutoff / 200.0).clamp(0.0, 1.0);
+    final gapPct = studentPct - collegePct;
+
+    if (gapPct >= 0) {
+      final bonus = (gapPct * 200.0).clamp(0.0, 29.0);
+      final rawProb = 70.0 + bonus;
+      final qualityFactor = (studentPct / 0.70).clamp(0.40, 1.0);
+      final adjusted = 40.0 + (rawProb - 40.0) * qualityFactor;
+      return adjusted.round().clamp(40, 99);
+    } else {
+      final rawProb = 55.0 + gapPct * 250.0;
+      return rawProb.round().clamp(5, 55);
+    }
   }
 
   String? _resolveBranchCode(String rawCourse) {
@@ -707,6 +829,7 @@ class ApiService {
       collegeName: item.collegeName,
       courseName: item.courseName,
       cutoff: item.cutoff,
+      maxCutoff: item.maxCutoff,
       probability: item.probability,
       category: category,
       district: item.district,

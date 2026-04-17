@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:guidex/app_routes.dart';
 import 'package:guidex/models/college_option.dart';
 import 'package:guidex/models/recommendation_result.dart';
@@ -23,10 +24,31 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   final TextEditingController _mobileController = TextEditingController();
   String _selectedCategory = '';
 
+  // Screen 1 Focus Nodes & Error State
+  final FocusNode _nameFocusNode = FocusNode();
+  final FocusNode _ageFocusNode = FocusNode();
+  final FocusNode _mobileFocusNode = FocusNode();
+  final Map<String, bool> _fieldErrors = {
+    'name': false,
+    'age': false,
+    'mobile': false,
+    'category': false,
+  };
+
   // Screen 2 Controllers
   final TextEditingController _physicsController = TextEditingController();
   final TextEditingController _chemistryController = TextEditingController();
   final TextEditingController _mathsController = TextEditingController();
+
+  // Screen 2 Focus Nodes & Error State
+  final FocusNode _physicsFocusNode = FocusNode();
+  final FocusNode _chemistryFocusNode = FocusNode();
+  final FocusNode _mathsFocusNode = FocusNode();
+  final Map<String, bool> _step2FieldErrors = {
+    'physics': false,
+    'chemistry': false,
+    'maths': false,
+  };
   double _cutoff = 0.0;
   final List<String> _categories = [
     'OC',
@@ -233,7 +255,82 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     _physicsController.dispose();
     _chemistryController.dispose();
     _mathsController.dispose();
+    _nameFocusNode.dispose();
+    _ageFocusNode.dispose();
+    _mobileFocusNode.dispose();
+    _physicsFocusNode.dispose();
+    _chemistryFocusNode.dispose();
+    _mathsFocusNode.dispose();
     super.dispose();
+  }
+
+  void _validateMarksInRealTime() {
+    // Real-time validation for marks (0-100)
+    double? physics = double.tryParse(_physicsController.text.trim());
+    double? chemistry = double.tryParse(_chemistryController.text.trim());
+    double? maths = double.tryParse(_mathsController.text.trim());
+
+    setState(() {
+      _step2FieldErrors['physics'] =
+          _physicsController.text.trim().isNotEmpty &&
+              (physics == null || physics < 0 || physics > 100);
+      _step2FieldErrors['chemistry'] =
+          _chemistryController.text.trim().isNotEmpty &&
+              (chemistry == null || chemistry < 0 || chemistry > 100);
+      _step2FieldErrors['maths'] = _mathsController.text.trim().isNotEmpty &&
+          (maths == null || maths < 0 || maths > 100);
+    });
+
+    // Calculate cutoff if inputs are valid
+    if ((_physicsController.text.trim().isNotEmpty &&
+            !(_step2FieldErrors['physics'] ?? false)) &&
+        (_chemistryController.text.trim().isNotEmpty &&
+            !(_step2FieldErrors['chemistry'] ?? false)) &&
+        (_mathsController.text.trim().isNotEmpty &&
+            !(_step2FieldErrors['maths'] ?? false))) {
+      _calculateCutoff();
+    }
+  }
+
+  // Clear individual field errors as user starts typing (1/3 page)
+  void _clearNameError() {
+    setState(() {
+      _fieldErrors['name'] = false;
+    });
+  }
+
+  void _clearAgeError() {
+    setState(() {
+      _fieldErrors['age'] = false;
+    });
+  }
+
+  void _clearMobileError() {
+    setState(() {
+      _fieldErrors['mobile'] = false;
+    });
+  }
+
+  // Clear individual field errors as user starts typing (2/3 page)
+  void _clearPhysicsError() {
+    setState(() {
+      _step2FieldErrors['physics'] = false;
+    });
+    _validateMarksInRealTime();
+  }
+
+  void _clearChemistryError() {
+    setState(() {
+      _step2FieldErrors['chemistry'] = false;
+    });
+    _validateMarksInRealTime();
+  }
+
+  void _clearMathsError() {
+    setState(() {
+      _step2FieldErrors['maths'] = false;
+    });
+    _validateMarksInRealTime();
   }
 
   void _calculateCutoff() {
@@ -628,9 +725,152 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     });
   }
 
+  bool _validateStep1() {
+    // Validate Step 1 (1/3): Name, Age, Mobile, Category
+    // Reset all error states
+    final newErrors = {
+      'name': _nameController.text.trim().isEmpty ||
+          _nameController.text.trim().length < 2,
+      'age': _ageController.text.trim().isEmpty ||
+          (int.tryParse(_ageController.text.trim()) ?? 0) < 17 ||
+          (int.tryParse(_ageController.text.trim()) ?? 0) > 100,
+      'mobile': _mobileController.text.trim().isEmpty ||
+          _mobileController.text.trim().length < 10,
+      'category': _selectedCategory.isEmpty,
+    };
+
+    setState(() {
+      _fieldErrors.addAll(newErrors);
+    });
+
+    // Find first empty/invalid field and focus on it
+    if (newErrors['name'] == true) {
+      _nameFocusNode.requestFocus();
+      _showSnackBar('Please enter a valid name (at least 2 characters)');
+      return false;
+    }
+    if (newErrors['age'] == true) {
+      _ageFocusNode.requestFocus();
+      _showSnackBar('Please enter a valid age (17-100)');
+      return false;
+    }
+    if (newErrors['mobile'] == true) {
+      _mobileFocusNode.requestFocus();
+      _showSnackBar('Please enter a valid mobile number (10 digits)');
+      return false;
+    }
+    if (newErrors['category'] == true) {
+      _showSnackBar('Please select a category');
+      return false;
+    }
+
+    // Clear errors if all valid
+    setState(() {
+      _fieldErrors['name'] = false;
+      _fieldErrors['age'] = false;
+      _fieldErrors['mobile'] = false;
+      _fieldErrors['category'] = false;
+    });
+
+    return true;
+  }
+
+  bool _validateStep2() {
+    // Validate Step 2 (2/3): Physics, Chemistry, Math marks (0-100)
+    double? physics = double.tryParse(_physicsController.text.trim());
+    double? chemistry = double.tryParse(_chemistryController.text.trim());
+    double? maths = double.tryParse(_mathsController.text.trim());
+
+    // Reset all error states
+    final newErrors = {
+      'physics': _physicsController.text.trim().isEmpty ||
+          physics == null ||
+          physics < 0 ||
+          physics > 100,
+      'chemistry': _chemistryController.text.trim().isEmpty ||
+          chemistry == null ||
+          chemistry < 0 ||
+          chemistry > 100,
+      'maths': _mathsController.text.trim().isEmpty ||
+          maths == null ||
+          maths < 0 ||
+          maths > 100,
+    };
+
+    setState(() {
+      _step2FieldErrors.addAll(newErrors);
+    });
+
+    // Find first empty/invalid field and focus on it
+    if (newErrors['physics'] == true) {
+      _physicsFocusNode.requestFocus();
+      if (_physicsController.text.trim().isEmpty) {
+        _showSnackBar('Please enter physics marks (0-100)');
+      } else {
+        _showSnackBar('Physics marks must be between 0 and 100');
+      }
+      return false;
+    }
+    if (newErrors['chemistry'] == true) {
+      _chemistryFocusNode.requestFocus();
+      if (_chemistryController.text.trim().isEmpty) {
+        _showSnackBar('Please enter chemistry marks (0-100)');
+      } else {
+        _showSnackBar('Chemistry marks must be between 0 and 100');
+      }
+      return false;
+    }
+    if (newErrors['maths'] == true) {
+      _mathsFocusNode.requestFocus();
+      if (_mathsController.text.trim().isEmpty) {
+        _showSnackBar('Please enter mathematics marks (0-100)');
+      } else {
+        _showSnackBar('Mathematics marks must be between 0 and 100');
+      }
+      return false;
+    }
+
+    // Calculate cutoff and verify it's valid
+    _calculateCutoff();
+    if (_cutoff <= 0) {
+      _showSnackBar('Invalid marks - please check your entries');
+      return false;
+    }
+
+    // Clear errors if all valid
+    setState(() {
+      _step2FieldErrors['physics'] = false;
+      _step2FieldErrors['chemistry'] = false;
+      _step2FieldErrors['maths'] = false;
+    });
+
+    return true;
+  }
+
+  bool _validateStep3() {
+    // Validate Step 3 (3/3): Preferred course and district
+    if (_selectedInterest.isEmpty) {
+      _showSnackBar('Please select a preferred course');
+      return false;
+    }
+    if (_selectedDistrict.isEmpty) {
+      _showSnackBar('Please select a district');
+      return false;
+    }
+    return true;
+  }
+
   void _nextPage() async {
     if (_currentStep < 2) {
-      if (_currentStep == 1) {
+      // Validate current step before proceeding
+      if (_currentStep == 0) {
+        if (!_validateStep1()) {
+          return;
+        }
+      } else if (_currentStep == 1) {
+        if (!_validateStep2()) {
+          return;
+        }
         _loadAvailableCoursesForCurrentInputs();
       }
 
@@ -644,19 +884,12 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    if (_nameController.text.isEmpty ||
-        _selectedCategory.isEmpty ||
-        _cutoff <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please complete all academic details first'),
-        ),
-      );
-      setState(() => _isLoading = false);
+    // Final validation before submission (Step 3)
+    if (!_validateStep3()) {
       return;
     }
+
+    setState(() => _isLoading = true);
 
     if (!mounted) return;
 
@@ -831,14 +1064,24 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
             style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
           ),
           const SizedBox(height: 32),
-          _buildTextField("Name", "Enter your full name", _nameController),
+          _buildTextField("Name", "Enter your full name", _nameController,
+              isName: true,
+              focusNode: _nameFocusNode,
+              hasError: _fieldErrors['name'] ?? false,
+              onChanged: _clearNameError),
+          const SizedBox(height: 20),
+          _buildTextField("Age", "e.g. 18", _ageController,
+              isAge: true,
+              focusNode: _ageFocusNode,
+              hasError: _fieldErrors['age'] ?? false,
+              onChanged: _clearAgeError),
           const SizedBox(height: 20),
           _buildTextField(
-              "Age / Date of Birth", "e.g. 18 or 12/05/2006", _ageController),
-          const SizedBox(height: 20),
-          _buildTextField("Mobile Number (Optional)", "Enter mobile number",
-              _mobileController,
-              isPhone: true),
+              "Mobile Number", "Enter mobile number", _mobileController,
+              isPhone: true,
+              focusNode: _mobileFocusNode,
+              hasError: _fieldErrors['mobile'] ?? false,
+              onChanged: _clearMobileError),
           const SizedBox(height: 32),
           const Text(
             "Select Category",
@@ -916,13 +1159,22 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           ),
           const SizedBox(height: 32),
           _buildTextField("Physics Marks", "Out of 100", _physicsController,
-              isNumber: true),
+              isNumber: true,
+              focusNode: _physicsFocusNode,
+              hasError: _step2FieldErrors['physics'] ?? false,
+              onChanged: _clearPhysicsError),
           const SizedBox(height: 20),
           _buildTextField("Chemistry Marks", "Out of 100", _chemistryController,
-              isNumber: true),
+              isNumber: true,
+              focusNode: _chemistryFocusNode,
+              hasError: _step2FieldErrors['chemistry'] ?? false,
+              onChanged: _clearChemistryError),
           const SizedBox(height: 20),
           _buildTextField("Mathematics Marks", "Out of 100", _mathsController,
-              isNumber: true),
+              isNumber: true,
+              focusNode: _mathsFocusNode,
+              hasError: _step2FieldErrors['maths'] ?? false,
+              onChanged: _clearMathsError),
           const SizedBox(height: 40),
           Container(
             width: double.infinity,
@@ -1120,16 +1372,23 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
   Widget _buildTextField(
       String label, String hint, TextEditingController controller,
-      {bool isNumber = false, bool isPhone = false}) {
+      {bool isNumber = false,
+      bool isPhone = false,
+      bool isName = false,
+      bool isAge = false,
+      FocusNode? focusNode,
+      bool hasError = false,
+      VoidCallback? onChanged}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF374151)),
+              color:
+                  hasError ? const Color(0xFFDC2626) : const Color(0xFF374151)),
         ),
         const SizedBox(height: 8),
         Container(
@@ -1145,32 +1404,78 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           ),
           child: TextField(
             controller: controller,
-            keyboardType:
-                isNumber || isPhone ? TextInputType.number : TextInputType.text,
+            focusNode: focusNode,
+            onChanged: (value) {
+              if (onChanged != null) {
+                onChanged();
+              }
+            },
+            keyboardType: isNumber || isPhone || isAge
+                ? TextInputType.number
+                : TextInputType.text,
+            maxLength: isName ? 50 : (isAge ? 3 : (isNumber ? 3 : null)),
+            inputFormatters: [
+              if (isName) LengthLimitingTextInputFormatter(50),
+              if (isAge) FilteringTextInputFormatter.digitsOnly,
+              if (isAge) LengthLimitingTextInputFormatter(3),
+              if (isNumber && !isPhone) FilteringTextInputFormatter.digitsOnly,
+              if (isNumber && !isPhone) LengthLimitingTextInputFormatter(3),
+              if (isPhone) FilteringTextInputFormatter.digitsOnly,
+            ],
             decoration: InputDecoration(
               hintText: hint,
               hintStyle:
                   const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+              counterText: isName ? null : '',
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+                borderSide: BorderSide(
+                  color: hasError
+                      ? const Color(0xFFDC2626)
+                      : Colors.grey.withValues(alpha: 0.1),
+                  width: hasError ? 2 : 1,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+                borderSide: BorderSide(
+                  color: hasError
+                      ? const Color(0xFFDC2626)
+                      : Colors.grey.withValues(alpha: 0.1),
+                  width: hasError ? 2 : 1,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: hasError
+                      ? const Color(0xFFDC2626)
+                      : const Color(0xFF4F46E5),
+                  width: 1.5,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
                 borderSide:
-                    const BorderSide(color: Color(0xFF4F46E5), width: 1.5),
+                    const BorderSide(color: Color(0xFFDC2626), width: 2),
               ),
             ),
           ),
         ),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'This field is required',
+              style: const TextStyle(
+                color: Color(0xFFDC2626),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
       ],
     );
   }

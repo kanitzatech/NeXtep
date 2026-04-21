@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:guidex/app_routes.dart';
+import 'package:guidex/screens/splash_screen.dart';
 import 'package:guidex/onboardingscreen.dart';
 import 'package:guidex/login_page.dart';
 import 'package:guidex/signup_page.dart';
@@ -13,27 +14,19 @@ import 'package:guidex/services/auth/auth_scope.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final String initialRoute = await _resolveInitialRoute();
-  runApp(MyApp(initialRoute: initialRoute));
-}
-
-Future<String> _resolveInitialRoute() async {
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
     }
-
-    final bool hasSession = await AuthScope.controller.restoreSession();
-    return hasSession ? AppRoutes.userCategory : AppRoutes.onboarding;
   } catch (_) {
-    return AppRoutes.onboarding;
+    // Continue to onboarding even if Firebase initialization fails.
   }
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.initialRoute});
-
-  final String initialRoute;
+  const MyApp({super.key});
 
   // This widget is the root of your application.
   @override
@@ -44,8 +37,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      initialRoute: initialRoute,
+      initialRoute: AppRoutes.splash,
       routes: {
+        AppRoutes.splash: (context) => const SplashScreen(),
         AppRoutes.onboarding: (context) => const OnboardingScreen(),
         AppRoutes.login: (context) => const LoginPage(),
         AppRoutes.signup: (context) => const SignUpPage(),

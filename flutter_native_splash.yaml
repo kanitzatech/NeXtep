@@ -1,7 +1,0 @@
-flutter_native_splash:
-  color: "#FEFEFE"
-  image: "assets/image/nextstep_logo.png"
-  android_12:
-    image: "assets/image/nextstep_logo.png"
-    color: "#FEFEFE"
-    icon_background_color: "#FEFEFE"

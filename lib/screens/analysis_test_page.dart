@@ -62,7 +62,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
   // Final Selection Data
   String _selectedDistrict = 'Any';
-  String _selectedInterest = 'Computer Science Engineering';
+  String _selectedInterest = '';
 
   final List<String> _fallbackCourses = [
     'Computer Science Engineering',
@@ -645,7 +645,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                                           ),
                                           const SizedBox(height: 6),
                                           Text(
-                                            option.collegeName,
+                                            _stripSpecializationCode(
+                                                option.collegeName),
                                             style: const TextStyle(
                                               color: Color(0xFF1F2937),
                                               fontWeight: FontWeight.w600,
@@ -912,8 +913,9 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
         preferredCourse: interestQuery,
         district: effectiveDistrict,
         preferredCollegeIds: _selectedPreferredCollegeIds,
-        preferredCollegeNames:
-            _selectedPreferredColleges.map((item) => item.collegeName).toList(),
+        preferredCollegeNames: _selectedPreferredColleges
+            .map((item) => _stripSpecializationCode(item.collegeName))
+            .toList(),
       );
 
       if (!mounted) return;
@@ -935,8 +937,9 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
         'interest': interestQuery,
         'district': effectiveDistrict,
         'preferredCollegeIds': _selectedPreferredCollegeIds,
-        'preferredColleges':
-            _selectedPreferredColleges.map((item) => item.collegeName).toList(),
+        'preferredColleges': _selectedPreferredColleges
+            .map((item) => _stripSpecializationCode(item.collegeName))
+            .toList(),
         'prefetchedResult': recommendationResult,
       });
     } catch (_) {
@@ -1248,7 +1251,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
               padding: EdgeInsets.only(bottom: 10),
               child: LinearProgressIndicator(minHeight: 3),
             ),
-          _buildSingleSelectDropdown(
+          _buildCourseDropdown(
             options: _courseOptions.isEmpty ? _fallbackCourses : _courseOptions,
             selectedItem: _selectedInterest,
             onChanged: (val) {
@@ -1263,15 +1266,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF374151)),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Districts are loaded from live backend data.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
           ),
           const SizedBox(height: 12),
           if (_districtsLoading)
@@ -1290,51 +1284,84 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
             },
           ),
           const SizedBox(height: 32),
-          const Text(
-            'Your Preferred Colleges (Max 5)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF374151),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F9FF),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Choose up to 5 colleges for direct probability analysis.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (_collegeOptionsLoading)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10),
-              child: LinearProgressIndicator(minHeight: 3),
-            ),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed:
-                  _collegeOptionsLoading ? null : _openPreferredCollegePicker,
-              icon: const Icon(Icons.search_rounded),
-              label: Text(
-                _selectedPreferredColleges.isEmpty
-                    ? 'Search and select colleges'
-                    : 'Edit selected colleges (${_selectedPreferredColleges.length}/$_maxPreferredColleges)',
-              ),
-              style: OutlinedButton.styleFrom(
-                backgroundColor: const Color(0xFFEFF6FF),
-                foregroundColor: const Color(0xFF1D4ED8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                side: const BorderSide(color: Color(0xFFBFDBFE)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your Preferred Colleges',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1E40AF),
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Select up to 5 colleges',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF3B82F6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: const Color(0xFFBFDBFE), width: 1),
+                      ),
+                      child: Text(
+                        '${_selectedPreferredColleges.length}/$_maxPreferredColleges',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E40AF),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                alignment: Alignment.centerLeft,
-              ),
+                const SizedBox(height: 12),
+                if (_collegeOptionsLoading)
+                  const LinearProgressIndicator(minHeight: 3),
+                if (!_collegeOptionsLoading)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _openPreferredCollegePicker,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Add Colleges'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1D4ED8),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           if (_selectedPreferredColleges.isNotEmpty) ...[
@@ -1348,7 +1375,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                   side: const BorderSide(color: Color(0xFFBFDBFE)),
                   deleteIconColor: const Color(0xFF1D4ED8),
                   label: Text(
-                    option.collegeName,
+                    _stripSpecializationCode(option.collegeName),
                     style: const TextStyle(
                       color: Color(0xFF1E3A8A),
                       fontWeight: FontWeight.w600,
@@ -1465,11 +1492,11 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           ),
         ),
         if (hasError)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
             child: Text(
               'This field is required',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Color(0xFFDC2626),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -1554,5 +1581,61 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildCourseDropdown({
+    required List<String> options,
+    required String selectedItem,
+    required Function(String) onChanged,
+  }) {
+    final isEmpty = selectedItem.isEmpty;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isEmpty
+              ? Colors.grey.withValues(alpha: 0.2)
+              : const Color(0xFF1D4ED8),
+          width: isEmpty ? 1 : 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
+        ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: isEmpty ? null : selectedItem,
+          hint: const Text(
+            'Choose',
+            style: TextStyle(
+              color: Color(0xFF9CA3AF),
+              fontSize: 16,
+            ),
+          ),
+          isExpanded: true,
+          items: options
+              .map((e) => DropdownMenuItem(
+                    value: e,
+                    child: Text(e),
+                  ))
+              .toList(),
+          onChanged: (val) {
+            if (val != null) onChanged(val);
+          },
+        ),
+      ),
+    );
+  }
+
+  String _stripSpecializationCode(String collegeName) {
+    // Remove specialization codes like specialization(AL), specialization(XC), etc.
+    return collegeName
+        .replaceAll(RegExp(r'\s*specialization\([A-Z]{2}\)\s*'), '')
+        .trim();
   }
 }

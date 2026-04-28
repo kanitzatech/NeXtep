@@ -161,8 +161,13 @@ public class RecommendationService {
             double communityMin = getCutoffByCategory(row, normalizedCategory);
             double communityMax = getMaxCutoffByCategory(row, normalizedCategory);
 
-            int probability = calculateProbability(studentCutoff, communityMin, communityMax);
-            if (probability < 40) {
+            if (Double.isNaN(communityMax) || communityMax <= 0.0
+                    || Double.isNaN(communityMin) || communityMin <= 0.0) {
+                continue;
+            }
+
+            int probability = calculateProbability(studentCutoff, communityMax, communityMin);
+            if (probability < 30) {
                 continue;
             }
 
@@ -178,6 +183,7 @@ public class RecommendationService {
             RecommendationResponse dto = toRecommendation(
                     row,
                     communityMin,
+                    communityMax,
                     probability,
                     bucket,
                     collegeDistrict,
@@ -201,7 +207,7 @@ public class RecommendationService {
                 .collect(Collectors.toList());
 
         safeResults = safeResults.stream()
-                .filter(item -> item.getProbability() != null && item.getProbability() >= 40 && item.getProbability() <= 69)
+                .filter(item -> item.getProbability() != null && item.getProbability() >= 30 && item.getProbability() <= 69)
                 .sorted(probabilityDesc)
                 .limit(SAFE_RESULT_LIMIT)
                 .collect(Collectors.toList());
@@ -221,7 +227,8 @@ public class RecommendationService {
 
     private RecommendationResponse toRecommendation(
             CutoffHistory row,
-            double selectedCutoff,
+            double closingCutoff,
+            double openingCutoff,
             int probability,
             String category,
             String collegeDistrict,
@@ -232,7 +239,8 @@ public class RecommendationService {
                 .courseName(mapToFullName(row.getBranch()))
                 .district(collegeDistrict)
                 .collegeType(collegeType)
-                .cutoff(selectedCutoff)
+                .cutoff(closingCutoff)
+                .maxCutoff(openingCutoff)
                 .probability(probability)
                 .category(category)
                 .score((double) probability)
@@ -240,35 +248,70 @@ public class RecommendationService {
                 .build();
     }
 
-    private int calculateProbability(double studentCutoff, double communityMin, double communityMax) {
-        if (Double.isNaN(communityMin) || Double.isNaN(communityMax)) {
+    private int calculateProbability(double studentCutoff, double communityMax, double communityMin) {
+        if (Double.isNaN(studentCutoff) || Double.isNaN(communityMax) || communityMax <= 0.0) {
             return -1;
         }
 
-        final double min = Math.min(communityMin, communityMax);
-        final double max = Math.max(communityMin, communityMax);
+        double max = communityMax;
+        double min = communityMin;
 
-        if (studentCutoff >= max) {
+        if (!Double.isNaN(min) && min > max) {
+            double temp = max;
+            max = min;
+            min = temp;
+        }
+
+        double gap = studentCutoff - max;
+
+        if (gap >= 15.0) {
+            return 99;
+        }
+
+        if (gap >= 10.0) {
+            return 97;
+        }
+
+        if (gap >= 5.0) {
             return 95;
         }
 
-        if (studentCutoff >= min) {
-            if (max == min) {
-                return 95;
-            }
-
-            double ratio = (studentCutoff - min) / (max - min);
-            double raw = 50.0 + (ratio * 45.0);
-            int bucket = (int) Math.floor(raw);
-            return Math.max(50, Math.min(94, bucket));
+        if (gap >= 2.0) {
+            return 93;
         }
 
-        double lowerBand = min - 3.0;
-        if (studentCutoff >= lowerBand) {
-            double ratio = (studentCutoff - lowerBand) / 3.0;
-            double raw = 20.0 + (ratio * 29.0);
-            int bucket = (int) Math.floor(raw);
-            return Math.max(20, Math.min(49, bucket));
+        if (gap >= 0.0) {
+            return 90;
+        }
+
+        if (Double.isNaN(min)) {
+            return -1;
+        }
+
+        double gapFromMin = studentCutoff - min;
+
+        if (gapFromMin >= 0.0) {
+            double range = max - min;
+            if (range == 0.0) {
+                return 75;
+            }
+
+            double ratio = gapFromMin / range;
+            return (int) Math.round(70.0 + (ratio * 19.0));
+        }
+
+        double deficit = min - studentCutoff;
+
+        if (deficit <= 3.0) {
+            return (int) Math.round(50.0 + ((3.0 - deficit) / 3.0) * 19.0);
+        }
+
+        if (deficit <= 8.0) {
+            return (int) Math.round(30.0 + ((8.0 - deficit) / 5.0) * 19.0);
+        }
+
+        if (deficit <= 15.0) {
+            return (int) Math.round(30.0 + ((15.0 - deficit) / 15.0) * 9.0);
         }
 
         return -1;

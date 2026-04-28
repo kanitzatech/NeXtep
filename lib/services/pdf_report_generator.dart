@@ -199,10 +199,16 @@ class PdfReportGenerator {
     addItems(data.safeColleges, 'safe');
 
     int compare(_ScoredRecommendation a, _ScoredRecommendation b) {
-      final cutoffCompare = a.item.cutoff.compareTo(b.item.cutoff);
-      if (cutoffCompare != 0) {
-        return cutoffCompare;
+      final byProbability = b.probability.compareTo(a.probability);
+      if (byProbability != 0) {
+        return byProbability;
       }
+
+      final byCutoff = b.item.cutoff.compareTo(a.item.cutoff);
+      if (byCutoff != 0) {
+        return byCutoff;
+      }
+
       return a.item.collegeName.toLowerCase().compareTo(
             b.item.collegeName.toLowerCase(),
           );

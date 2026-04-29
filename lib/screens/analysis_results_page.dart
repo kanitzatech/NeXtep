@@ -989,7 +989,7 @@ class _AnalysisResultsPageState extends State<AnalysisResultsPage> {
           preferredColleges: _preferredRecommendations,
           safeColleges: _safeRecommendations,
           selectedPreferredCollegeNames: _resolvedPreferredCollegeNames,
-          logoAssetPath: 'assets/image/nextstep_logo.png',
+          logoAssetPath: 'assets/image/category.png',
         ),
       );
 

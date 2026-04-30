@@ -543,8 +543,49 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     });
   }
 
+  Future<List<CollegeOption>> _getAllCollegesFromDatabase() async {
+    // Fetch all colleges by requesting with common courses
+    final allColleges = <String, CollegeOption>{};
+
+    // Try fetching with multiple common courses to get all colleges
+    final commonCourses = [
+      'Computer Science Engineering',
+      'Mechanical Engineering',
+      'Civil Engineering',
+      'Electrical Engineering'
+    ];
+
+    for (final course in commonCourses) {
+      try {
+        final options = await _apiService.getCollegeOptions(
+          preferredCourse: course,
+          district: null,
+          category: null,
+          cutoff: null,
+        );
+
+        for (final option in options) {
+          allColleges[option.collegeId] = option;
+        }
+      } catch (e) {
+        debugPrint('Error fetching colleges for $course: $e');
+      }
+    }
+
+    return allColleges.values.toList()
+      ..sort((a, b) => a.collegeName.compareTo(b.collegeName));
+  }
+
   Future<void> _openPreferredCollegePicker() async {
     final selectedIds = _selectedPreferredCollegeIds.toSet();
+
+    // Load all colleges from database
+    setState(() => _collegeOptionsLoading = true);
+    final allColleges = await _getAllCollegesFromDatabase();
+    setState(() => _collegeOptionsLoading = false);
+
+    if (!mounted) return;
+
     final selected = await showModalBottomSheet<Set<String>>(
       context: context,
       isScrollControlled: true,
@@ -554,13 +595,14 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final filtered = _collegeOptions.where((option) {
+            final filtered = allColleges.where((option) {
               if (query.trim().isEmpty) {
                 return true;
               }
 
-              final normalized = query.toLowerCase();
-              return option.collegeName.toLowerCase().contains(normalized);
+              // Case-insensitive search
+              final normalizedQuery = query.toLowerCase();
+              return option.collegeName.toLowerCase().contains(normalizedQuery);
             }).toList();
 
             return SafeArea(
@@ -577,7 +619,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Select Preferred Colleges',
+                        'Choose Colleges (1-426)',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -586,7 +628,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Choose up to $_maxPreferredColleges colleges',
+                        'Choose up to $_maxPreferredColleges colleges (Total: ${allColleges.length})',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade600,
@@ -596,7 +638,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                       TextField(
                         controller: searchController,
                         decoration: InputDecoration(
-                          hintText: 'Search college by name',
+                          hintText: 'Search college by name (case-insensitive)',
                           prefixIcon: const Icon(Icons.search),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -609,11 +651,20 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                         },
                       ),
                       const SizedBox(height: 12),
+                      Text(
+                        'Results: ${filtered.length} colleges',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Expanded(
                         child: filtered.isEmpty
                             ? Center(
                                 child: Text(
-                                  'No colleges found for this course.',
+                                  'No colleges found matching "$query"',
                                   style: TextStyle(
                                     color: Colors.grey.shade600,
                                   ),
@@ -629,53 +680,37 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 8),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFEFF6FF)
-                                          .withValues(alpha: 0.55),
+                                      color: isSelected
+                                          ? const Color(0xFFEFF6FF)
+                                          : Colors.white,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: const Color(0xFFBFDBFE),
+                                        color: isSelected
+                                            ? const Color(0xFF1D4ED8)
+                                            : const Color(0xFFBFDBFE),
+                                        width: isSelected ? 2 : 1,
                                       ),
                                     ),
                                     child: ListTile(
                                       contentPadding:
                                           const EdgeInsets.symmetric(
                                         horizontal: 12,
-                                        vertical: 2,
+                                        vertical: 8,
                                       ),
-                                      title: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFDBEAFE),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                            child: const Text(
-                                              'COLLEGE',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: 0.6,
-                                                color: Color(0xFF1D4ED8),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            _stripSpecializationCode(
-                                                option.collegeName),
-                                            style: const TextStyle(
-                                              color: Color(0xFF1F2937),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
+                                      title: Text(
+                                        _stripSpecializationCode(
+                                            option.collegeName),
+                                        style: const TextStyle(
+                                          color: Color(0xFF1F2937),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        'ID: ${option.collegeId}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade500,
+                                        ),
                                       ),
                                       onTap: () {
                                         setSheetState(() {
@@ -687,8 +722,13 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
                                           if (selectedIds.length >=
                                               _maxPreferredColleges) {
-                                            _showSnackBar(
-                                              'You can select only $_maxPreferredColleges colleges.',
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'You can select only $_maxPreferredColleges colleges.',
+                                                ),
+                                              ),
                                             );
                                             return;
                                           }
@@ -740,7 +780,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     }
 
     final selectedSet = selected.take(_maxPreferredColleges).toSet();
-    final selectedOptions = _collegeOptions
+    final selectedOptions = allColleges
         .where((option) => selectedSet.contains(option.collegeId))
         .toList();
 

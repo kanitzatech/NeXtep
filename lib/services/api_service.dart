@@ -354,7 +354,7 @@ class ApiService {
   }
 
   Future<List<CollegeOption>> getAllColleges() async {
-    // Fetch all colleges from the database without any filters
+    // First, try the dedicated endpoint
     Object? lastError;
 
     for (final base in _orderedBaseCandidates()) {
@@ -365,43 +365,84 @@ class ApiService {
         final timeout = _timeoutForBase(base, path: '/api/colleges');
         final response = await http.get(uri).timeout(timeout);
 
-        if (response.statusCode == 404 || response.statusCode == 405) {
-          // Try alternative endpoint
-          continue;
+        if (response.statusCode == 200) {
+          final decoded = json.decode(response.body);
+          if (decoded is! List) {
+            continue;
+          }
+
+          final options = decoded
+              .whereType<Map>()
+              .map((entry) => CollegeOption.fromJson(
+                    Map<String, dynamic>.from(entry),
+                  ))
+              .where((item) =>
+                  item.collegeId.trim().isNotEmpty &&
+                  item.collegeName.trim().isNotEmpty)
+              .toList();
+
+          _preferredBaseUrl = _normalizeBaseUrl(base);
+          debugPrint('Successfully fetched ${options.length} colleges');
+          return options;
         }
-
-        if (response.statusCode != 200) {
-          lastError = Exception(
-            'Get all colleges API failed with status ${response.statusCode}',
-          );
-          continue;
-        }
-
-        final decoded = json.decode(response.body);
-        if (decoded is! List) {
-          continue;
-        }
-
-        final options = decoded
-            .whereType<Map>()
-            .map((entry) => CollegeOption.fromJson(
-                  Map<String, dynamic>.from(entry),
-                ))
-            .where((item) =>
-                item.collegeId.trim().isNotEmpty &&
-                item.collegeName.trim().isNotEmpty)
-            .toList();
-
-        _preferredBaseUrl = _normalizeBaseUrl(base);
-        return options;
       } on TimeoutException catch (error) {
         lastError = error;
+        debugPrint('Timeout fetching all colleges: $error');
       } catch (error) {
         lastError = error;
+        debugPrint('Error fetching all colleges: $error');
       }
     }
 
-    debugPrint('Failed to fetch all colleges. Last error: $lastError');
+    // Fallback: Aggregate colleges from multiple well-known courses
+    debugPrint('Fallback: Aggregating colleges from multiple courses');
+    final collegesMap = <String, CollegeOption>{};
+    
+    final coursesToTry = [
+      'Computer Science Engineering',
+      'Information Technology',
+      'Mechanical Engineering',
+      'Civil Engineering',
+      'Electrical and Electronics Engineering',
+      'Electronics and Communication Engineering',
+      'Electronics and Instrumentation Engineering',
+      'Biomedical Engineering',
+      'Biotechnology',
+      'Chemical Engineering',
+      'Artificial Intelligence and Data Science',
+      'Automobile Engineering',
+      'Aeronautical Engineering',
+    ];
+
+    for (final course in coursesToTry) {
+      try {
+        final options = await getCollegeOptions(
+          preferredCourse: course,
+          district: null,
+          category: null,
+          cutoff: null,
+        );
+        
+        for (final option in options) {
+          collegesMap[option.collegeId] = option;
+        }
+        
+        debugPrint(
+            'Course "$course": ${options.length} options, Total aggregated: ${collegesMap.length}');
+      } catch (e) {
+        debugPrint('Error fetching colleges for "$course": $e');
+      }
+    }
+
+    final allColleges = collegesMap.values.toList();
+    
+    if (allColleges.isNotEmpty) {
+      allColleges.sort((a, b) => a.collegeName.compareTo(b.collegeName));
+      debugPrint('Successfully aggregated ${allColleges.length} unique colleges');
+      return allColleges;
+    }
+
+    debugPrint('Failed to fetch any colleges. Last error: $lastError');
     return const [];
   }
 

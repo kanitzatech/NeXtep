@@ -563,15 +563,61 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   Future<void> _openPreferredCollegePicker() async {
     final selectedIds = _selectedPreferredCollegeIds.toSet();
 
-    // Load all colleges from database
+    // Load all colleges using category and cutoff from earlier pages
     setState(() => _collegeOptionsLoading = true);
-    final allColleges = await _getAllCollegesFromDatabase();
+    
+    List<CollegeOption> allColleges = [];
+    
+    // Try to fetch colleges for multiple courses using the category and cutoff
+    final commonCourses = [
+      'Computer Science Engineering',
+      'Information Technology',
+      'Mechanical Engineering',
+      'Civil Engineering',
+      'Electrical and Electronics Engineering',
+      'Electronics and Communication Engineering',
+      'Electronics and Instrumentation Engineering',
+      'Biomedical Engineering',
+      'Biotechnology',
+      'Chemical Engineering',
+      'Artificial Intelligence and Data Science',
+      'Automobile Engineering',
+      'Aeronautical Engineering',
+      'Production Engineering',
+      'Mining Engineering',
+      'Petrochemical Engineering',
+    ];
+    
+    final collegesMap = <String, CollegeOption>{};
+    
+    for (final course in commonCourses) {
+      try {
+        final options = await _apiService.getCollegeOptions(
+          preferredCourse: course,
+          district: null,
+          category: _selectedCategory.isNotEmpty ? _selectedCategory : null,
+          cutoff: _cutoff > 0 ? _cutoff : null,
+        );
+        
+        for (final option in options) {
+          collegesMap[option.collegeId] = option;
+        }
+      } catch (e) {
+        debugPrint('Error fetching colleges for $course: $e');
+      }
+    }
+    
+    allColleges = collegesMap.values.toList();
+    allColleges.sort((a, b) => a.collegeName.compareTo(b.collegeName));
+    
     setState(() => _collegeOptionsLoading = false);
-
+    
     if (!mounted) return;
-
-    final selected = await showModalBottomSheet<Set<String>>(
-      context: context,
+    
+    if (allColleges.isEmpty) {
+      _showSnackBar('No colleges available. Please try again.');
+      return;
+    }
       isScrollControlled: true,
       builder: (context) {
         final searchController = TextEditingController();

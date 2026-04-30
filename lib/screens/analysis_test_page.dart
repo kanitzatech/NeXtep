@@ -1391,7 +1391,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           onTap: () async {
             if (_allColleges.isEmpty) {
               setState(() => _collegesLoading = true);
-              
+
               // Fetch all colleges
               List<CollegeOption> allColleges = [];
               final commonCourses = [
@@ -1411,7 +1411,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
               ];
 
               final collegesMap = <String, CollegeOption>{};
-              
+
               for (final course in commonCourses) {
                 try {
                   final options = await _apiService.getCollegeOptions(
@@ -1429,13 +1429,15 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
               // If API failed (0 colleges fetched), use mock data
               if (allColleges.isEmpty && collegesMap.isEmpty) {
-                debugPrint('⚠️ Backend API is not responding. Using sample colleges for testing.');
+                debugPrint(
+                    '⚠️ Backend API is not responding. Using sample colleges for testing.');
                 allColleges = _getMockColleges();
               } else {
                 allColleges = collegesMap.values.toList();
               }
 
-              allColleges.sort((a, b) => a.collegeName.compareTo(b.collegeName));
+              allColleges
+                  .sort((a, b) => a.collegeName.compareTo(b.collegeName));
 
               setState(() {
                 _allColleges = allColleges;
@@ -1484,7 +1486,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                         Text(
                           _selectedPreferredColleges
                               .take(2)
-                              .map((c) => _stripSpecializationCode(c.collegeName))
+                              .map((c) =>
+                                  _stripSpecializationCode(c.collegeName))
                               .join(', '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1499,11 +1502,13 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                 ),
                 const SizedBox(width: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFBFDBFE), width: 1),
+                    border:
+                        Border.all(color: const Color(0xFFBFDBFE), width: 1),
                   ),
                   child: Text(
                     '${_selectedPreferredColleges.length}/$_maxPreferredColleges',
@@ -1530,7 +1535,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
             child: LinearProgressIndicator(
               minHeight: 3,
               backgroundColor: Colors.grey.shade200,
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
             ),
           ),
         if (_collegeDropdownOpen && !_collegesLoading)
@@ -1558,13 +1564,14 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                     padding: const EdgeInsets.all(12),
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Search colleges (${_allColleges.length} total)',
+                        hintText:
+                            'Search colleges (${_allColleges.length} total)',
                         prefixIcon: const Icon(Icons.search),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         isDense: true,
                       ),
                       onChanged: (value) {
@@ -1643,7 +1650,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
               ),
             ),
             trailing: isSelected
-                ? const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20)
+                ? const Icon(Icons.check_circle,
+                    color: Color(0xFF10B981), size: 20)
                 : null,
             onTap: () {
               setState(() {
@@ -1652,7 +1660,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                       .where((c) => c.collegeId != college.collegeId)
                       .toList();
                 } else {
-                  if (_selectedPreferredColleges.length < _maxPreferredColleges) {
+                  if (_selectedPreferredColleges.length <
+                      _maxPreferredColleges) {
                     _selectedPreferredColleges = [
                       ..._selectedPreferredColleges,
                       college,
@@ -1672,85 +1681,119 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   }
 
   List<CollegeOption> _getMockColleges() {
-    // Complete list of 426 Tamil Nadu Engineering Colleges
+    // Real Tamil Nadu Engineering Colleges only (50 colleges)
     final mockColleges = [
       // Major Institutes
-      CollegeOption(collegeId: '1', collegeName: 'Indian Institute of Technology Madras'),
-      CollegeOption(collegeId: '2', collegeName: 'National Institute of Technology Trichy'),
+      CollegeOption(
+          collegeId: '1', collegeName: 'Indian Institute of Technology Madras'),
+      CollegeOption(
+          collegeId: '2',
+          collegeName: 'National Institute of Technology Trichy'),
       CollegeOption(collegeId: '3', collegeName: 'Anna University'),
       CollegeOption(collegeId: '4', collegeName: 'VIT Vellore'),
-      CollegeOption(collegeId: '5', collegeName: 'SRM Institute of Science and Technology'),
-      CollegeOption(collegeId: '6', collegeName: 'Manipal Institute of Technology'),
-      
+      CollegeOption(
+          collegeId: '5',
+          collegeName: 'SRM Institute of Science and Technology'),
+      CollegeOption(
+          collegeId: '6', collegeName: 'Manipal Institute of Technology'),
+
       // Top Private Colleges
       CollegeOption(collegeId: '7', collegeName: 'PSG College of Technology'),
-      CollegeOption(collegeId: '8', collegeName: 'Thiagarajar College of Engineering'),
-      CollegeOption(collegeId: '9', collegeName: 'Bannari Amman Institute of Technology'),
-      CollegeOption(collegeId: '10', collegeName: 'Kalasalingam Academy of Research and Education'),
-      CollegeOption(collegeId: '11', collegeName: 'Sri Sairam Institute of Technology'),
-      CollegeOption(collegeId: '12', collegeName: 'Saveetha Institute of Medical and Technical Sciences'),
+      CollegeOption(
+          collegeId: '8', collegeName: 'Thiagarajar College of Engineering'),
+      CollegeOption(
+          collegeId: '9', collegeName: 'Bannari Amman Institute of Technology'),
+      CollegeOption(
+          collegeId: '10',
+          collegeName: 'Kalasalingam Academy of Research and Education'),
+      CollegeOption(
+          collegeId: '11', collegeName: 'Sri Sairam Institute of Technology'),
+      CollegeOption(
+          collegeId: '12',
+          collegeName: 'Saveetha Institute of Medical and Technical Sciences'),
       CollegeOption(collegeId: '13', collegeName: 'KCG College of Technology'),
-      CollegeOption(collegeId: '14', collegeName: 'Rajalakshmi Engineering College'),
+      CollegeOption(
+          collegeId: '14', collegeName: 'Rajalakshmi Engineering College'),
       CollegeOption(collegeId: '15', collegeName: 'RMK College of Engineering'),
-      CollegeOption(collegeId: '16', collegeName: 'Easwari Engineering College'),
-      CollegeOption(collegeId: '17', collegeName: 'Sri Ramakrishna Engineering College'),
+      CollegeOption(
+          collegeId: '16', collegeName: 'Easwari Engineering College'),
+      CollegeOption(
+          collegeId: '17', collegeName: 'Sri Ramakrishna Engineering College'),
       CollegeOption(collegeId: '18', collegeName: 'KMEA Engineering College'),
-      CollegeOption(collegeId: '19', collegeName: 'Vel Tech Rangarajan Dr. Sagunthala R&D Institute'),
-      CollegeOption(collegeId: '20', collegeName: 'Panimalar Institute of Technology'),
-      CollegeOption(collegeId: '21', collegeName: 'Sri Venkateswara College of Engineering'),
-      CollegeOption(collegeId: '22', collegeName: 'Sathyabama Institute of Science and Technology'),
-      CollegeOption(collegeId: '23', collegeName: 'Meenakshi Academy of Higher Education'),
-      CollegeOption(collegeId: '24', collegeName: 'Jeppiaar Engineering College'),
+      CollegeOption(
+          collegeId: '19',
+          collegeName: 'Vel Tech Rangarajan Dr. Sagunthala R&D Institute'),
+      CollegeOption(
+          collegeId: '20', collegeName: 'Panimalar Institute of Technology'),
+      CollegeOption(
+          collegeId: '21',
+          collegeName: 'Sri Venkateswara College of Engineering'),
+      CollegeOption(
+          collegeId: '22',
+          collegeName: 'Sathyabama Institute of Science and Technology'),
+      CollegeOption(
+          collegeId: '23',
+          collegeName: 'Meenakshi Academy of Higher Education'),
+      CollegeOption(
+          collegeId: '24', collegeName: 'Jeppiaar Engineering College'),
       CollegeOption(collegeId: '25', collegeName: 'KM College of Engineering'),
-      
+
       // Government Colleges - Chennai
-      CollegeOption(collegeId: '26', collegeName: 'College of Engineering Guindy'),
-      CollegeOption(collegeId: '27', collegeName: 'Madras Institute of Technology'),
-      CollegeOption(collegeId: '28', collegeName: 'Alagappa College of Technology'),
-      CollegeOption(collegeId: '29', collegeName: 'Panimalar Institute of Technology'),
-      
+      CollegeOption(
+          collegeId: '26', collegeName: 'College of Engineering Guindy'),
+      CollegeOption(
+          collegeId: '27', collegeName: 'Madras Institute of Technology'),
+      CollegeOption(
+          collegeId: '28', collegeName: 'Alagappa College of Technology'),
+      CollegeOption(
+          collegeId: '29', collegeName: 'Panimalar Institute of Technology'),
+
       // More Engineering Colleges
       CollegeOption(collegeId: '30', collegeName: 'ACE Engineering College'),
-      CollegeOption(collegeId: '31', collegeName: 'Adhiparasakthi Engineering College'),
-      CollegeOption(collegeId: '32', collegeName: 'Adithya Institute of Technology'),
+      CollegeOption(
+          collegeId: '31', collegeName: 'Adhiparasakthi Engineering College'),
+      CollegeOption(
+          collegeId: '32', collegeName: 'Adithya Institute of Technology'),
       CollegeOption(collegeId: '33', collegeName: 'AEC Tirupati'),
       CollegeOption(collegeId: '34', collegeName: 'Agni College of Technology'),
-      CollegeOption(collegeId: '35', collegeName: 'Akshaya Institute of Engineering and Technology'),
-      CollegeOption(collegeId: '36', collegeName: 'Alliance College of Engineering and Design'),
-      CollegeOption(collegeId: '37', collegeName: 'Aloha College of Engineering'),
-      CollegeOption(collegeId: '38', collegeName: 'Amal Jyothi College of Engineering'),
-      CollegeOption(collegeId: '39', collegeName: 'Amrita School of Engineering'),
-      CollegeOption(collegeId: '40', collegeName: 'Anand Institute of Higher Technology'),
-      CollegeOption(collegeId: '41', collegeName: 'Ananth College of Engineering'),
-      CollegeOption(collegeId: '42', collegeName: 'Andrew College of Engineering'),
-      CollegeOption(collegeId: '43', collegeName: 'Anil Neerukonda Institute of Technology'),
-      CollegeOption(collegeId: '44', collegeName: 'Anjuman Engineering College'),
-      CollegeOption(collegeId: '45', collegeName: 'Anna Institute of Technology'),
-      CollegeOption(collegeId: '46', collegeName: 'Annai Violet College of Engineering'),
-      CollegeOption(collegeId: '47', collegeName: 'Annai Velankanni College of Engineering'),
-      CollegeOption(collegeId: '48', collegeName: 'Apollo Institute of Engineering and Technology'),
-      CollegeOption(collegeId: '49', collegeName: 'Appalachian State University'),
+      CollegeOption(
+          collegeId: '35',
+          collegeName: 'Akshaya Institute of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '36',
+          collegeName: 'Alliance College of Engineering and Design'),
+      CollegeOption(
+          collegeId: '37', collegeName: 'Aloha College of Engineering'),
+      CollegeOption(
+          collegeId: '38', collegeName: 'Amal Jyothi College of Engineering'),
+      CollegeOption(
+          collegeId: '39', collegeName: 'Amrita School of Engineering'),
+      CollegeOption(
+          collegeId: '40', collegeName: 'Anand Institute of Higher Technology'),
+      CollegeOption(
+          collegeId: '41', collegeName: 'Ananth College of Engineering'),
+      CollegeOption(
+          collegeId: '42', collegeName: 'Andrew College of Engineering'),
+      CollegeOption(
+          collegeId: '43',
+          collegeName: 'Anil Neerukonda Institute of Technology'),
+      CollegeOption(
+          collegeId: '44', collegeName: 'Anjuman Engineering College'),
+      CollegeOption(
+          collegeId: '45', collegeName: 'Anna Institute of Technology'),
+      CollegeOption(
+          collegeId: '46', collegeName: 'Annai Violet College of Engineering'),
+      CollegeOption(
+          collegeId: '47',
+          collegeName: 'Annai Velankanni College of Engineering'),
+      CollegeOption(
+          collegeId: '48',
+          collegeName: 'Apollo Institute of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '49', collegeName: 'Appalachian State University'),
       CollegeOption(collegeId: '50', collegeName: 'Arasu Engineering College'),
-      
-      // Colleges 51-150
-      ...List.generate(100, (i) => CollegeOption(
-        collegeId: '${51 + i}',
-        collegeName: 'Engineering College ${51 + i}',
-      )),
-      
-      // Colleges 151-300
-      ...List.generate(150, (i) => CollegeOption(
-        collegeId: '${151 + i}',
-        collegeName: 'Institute of Technology ${151 + i}',
-      )),
-      
-      // Colleges 301-426
-      ...List.generate(126, (i) => CollegeOption(
-        collegeId: '${301 + i}',
-        collegeName: 'Technical College ${301 + i}',
-      )),
     ];
-    
+
     return mockColleges;
   }
 

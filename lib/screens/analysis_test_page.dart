@@ -545,17 +545,53 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
   Future<List<CollegeOption>> _getAllCollegesFromDatabase() async {
     try {
-      final allColleges = await _apiService.getAllColleges();
+      debugPrint('Fetching all colleges from database...');
 
-      if (allColleges.isEmpty) {
-        debugPrint('No colleges found from API');
+      final collegesMap = <String, CollegeOption>{};
+
+      final coursesToTry = [
+        'Computer Science Engineering',
+        'Information Technology',
+        'Mechanical Engineering',
+        'Civil Engineering',
+        'Electrical and Electronics Engineering',
+        'Electronics and Communication Engineering',
+        'Electronics and Instrumentation Engineering',
+        'Biomedical Engineering',
+        'Biotechnology',
+        'Chemical Engineering',
+        'Artificial Intelligence and Data Science',
+        'Automobile Engineering',
+        'Aeronautical Engineering',
+        'Artificial Intelligence and Machine Learning',
+        'Architecture',
+        'Automobile',
+      ];
+
+      for (final course in coursesToTry) {
+        try {
+          debugPrint('Fetching colleges for course: $course');
+          final options = await _apiService.getCollegeOptions(
+            preferredCourse: course,
+          );
+
+          debugPrint('  → Found ${options.length} colleges for "$course"');
+
+          for (final option in options) {
+            collegesMap[option.collegeId] = option;
+          }
+        } catch (e) {
+          debugPrint('Error fetching colleges for "$course": $e');
+        }
       }
 
-      // Sort by college name
+      final allColleges = collegesMap.values.toList();
+      debugPrint('✅ Total unique colleges fetched: ${allColleges.length}');
+
       allColleges.sort((a, b) => a.collegeName.compareTo(b.collegeName));
       return allColleges;
     } catch (e) {
-      debugPrint('Error fetching all colleges: $e');
+      debugPrint('❌ Error fetching all colleges: $e');
       return const [];
     }
   }

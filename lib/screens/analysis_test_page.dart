@@ -1681,9 +1681,9 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   }
 
   List<CollegeOption> _getMockColleges() {
-    // Real Tamil Nadu Engineering Colleges only (50 colleges)
+    // Real Tamil Nadu Engineering Colleges only (100 colleges)
     final mockColleges = [
-      // Major Institutes
+      // Major National Institutes
       CollegeOption(
           collegeId: '1', collegeName: 'Indian Institute of Technology Madras'),
       CollegeOption(
@@ -1697,7 +1697,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       CollegeOption(
           collegeId: '6', collegeName: 'Manipal Institute of Technology'),
 
-      // Top Private Colleges
+      // Top Private Colleges - Chennai
       CollegeOption(collegeId: '7', collegeName: 'PSG College of Technology'),
       CollegeOption(
           collegeId: '8', collegeName: 'Thiagarajar College of Engineering'),
@@ -1737,61 +1737,194 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       CollegeOption(
           collegeId: '24', collegeName: 'Jeppiaar Engineering College'),
       CollegeOption(collegeId: '25', collegeName: 'KM College of Engineering'),
+      CollegeOption(
+          collegeId: '26', collegeName: 'SSN College of Engineering'),
+      CollegeOption(
+          collegeId: '27',
+          collegeName: 'Loyola-ICAM College of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '28', collegeName: 'Velammal Engineering College'),
+      CollegeOption(
+          collegeId: '29',
+          collegeName: 'Chettinad College of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '30',
+          collegeName: 'Sri Shanmugha College of Engineering and Technology'),
 
       // Government Colleges - Chennai
       CollegeOption(
-          collegeId: '26', collegeName: 'College of Engineering Guindy'),
+          collegeId: '31', collegeName: 'College of Engineering Guindy'),
       CollegeOption(
-          collegeId: '27', collegeName: 'Madras Institute of Technology'),
+          collegeId: '32', collegeName: 'Madras Institute of Technology'),
       CollegeOption(
-          collegeId: '28', collegeName: 'Alagappa College of Technology'),
-      CollegeOption(
-          collegeId: '29', collegeName: 'Panimalar Institute of Technology'),
+          collegeId: '33', collegeName: 'Alagappa College of Technology'),
 
-      // More Engineering Colleges
-      CollegeOption(collegeId: '30', collegeName: 'ACE Engineering College'),
+      // More Private Engineering Colleges
+      CollegeOption(collegeId: '34', collegeName: 'ACE Engineering College'),
       CollegeOption(
-          collegeId: '31', collegeName: 'Adhiparasakthi Engineering College'),
+          collegeId: '35', collegeName: 'Adhiparasakthi Engineering College'),
       CollegeOption(
-          collegeId: '32', collegeName: 'Adithya Institute of Technology'),
-      CollegeOption(collegeId: '33', collegeName: 'AEC Tirupati'),
-      CollegeOption(collegeId: '34', collegeName: 'Agni College of Technology'),
+          collegeId: '36', collegeName: 'Adithya Institute of Technology'),
+      CollegeOption(collegeId: '37', collegeName: 'Agni College of Technology'),
       CollegeOption(
-          collegeId: '35',
+          collegeId: '38',
           collegeName: 'Akshaya Institute of Engineering and Technology'),
       CollegeOption(
-          collegeId: '36',
-          collegeName: 'Alliance College of Engineering and Design'),
+          collegeId: '39', collegeName: 'Aloha College of Engineering'),
       CollegeOption(
-          collegeId: '37', collegeName: 'Aloha College of Engineering'),
+          collegeId: '40', collegeName: 'Amal Jyothi College of Engineering'),
       CollegeOption(
-          collegeId: '38', collegeName: 'Amal Jyothi College of Engineering'),
+          collegeId: '41', collegeName: 'Amrita School of Engineering'),
       CollegeOption(
-          collegeId: '39', collegeName: 'Amrita School of Engineering'),
+          collegeId: '42', collegeName: 'Anand Institute of Higher Technology'),
       CollegeOption(
-          collegeId: '40', collegeName: 'Anand Institute of Higher Technology'),
+          collegeId: '43', collegeName: 'Ananth College of Engineering'),
       CollegeOption(
-          collegeId: '41', collegeName: 'Ananth College of Engineering'),
+          collegeId: '44', collegeName: 'Andrew College of Engineering'),
       CollegeOption(
-          collegeId: '42', collegeName: 'Andrew College of Engineering'),
-      CollegeOption(
-          collegeId: '43',
+          collegeId: '45',
           collegeName: 'Anil Neerukonda Institute of Technology'),
       CollegeOption(
-          collegeId: '44', collegeName: 'Anjuman Engineering College'),
+          collegeId: '46', collegeName: 'Anjuman Engineering College'),
       CollegeOption(
-          collegeId: '45', collegeName: 'Anna Institute of Technology'),
+          collegeId: '47', collegeName: 'Anna Institute of Technology'),
       CollegeOption(
-          collegeId: '46', collegeName: 'Annai Violet College of Engineering'),
+          collegeId: '48', collegeName: 'Annai Violet College of Engineering'),
       CollegeOption(
-          collegeId: '47',
+          collegeId: '49',
           collegeName: 'Annai Velankanni College of Engineering'),
       CollegeOption(
-          collegeId: '48',
+          collegeId: '50',
           collegeName: 'Apollo Institute of Engineering and Technology'),
+      CollegeOption(collegeId: '51', collegeName: 'Arasu Engineering College'),
       CollegeOption(
-          collegeId: '49', collegeName: 'Appalachian State University'),
-      CollegeOption(collegeId: '50', collegeName: 'Arasu Engineering College'),
+          collegeId: '52',
+          collegeName: 'Arulmigu Meenakshi College of Engineering'),
+      CollegeOption(
+          collegeId: '53',
+          collegeName: 'Varuvan Vadivelan Institute of Technology'),
+      CollegeOption(
+          collegeId: '54',
+          collegeName: 'Sri Krishna College of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '55',
+          collegeName: 'Adhiyamaan College of Engineering'),
+      CollegeOption(
+          collegeId: '56', collegeName: 'KVN College of Engineering'),
+      CollegeOption(collegeId: '57', collegeName: 'Arun College of Engineering'),
+      CollegeOption(
+          collegeId: '58',
+          collegeName: 'Sri Muthukumaran Institute of Technology'),
+      CollegeOption(
+          collegeId: '59', collegeName: 'Sruthi Institute of Technology'),
+      CollegeOption(
+          collegeId: '60',
+          collegeName: 'RVS College of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '61',
+          collegeName: 'Prince Shri Venkateshwara College of Engineering'),
+      CollegeOption(
+          collegeId: '62', collegeName: 'Nandha College of Technology'),
+      CollegeOption(
+          collegeId: '63',
+          collegeName: 'Muthuraman College of Engineering'),
+      CollegeOption(
+          collegeId: '64',
+          collegeName: 'Mepco Schlenk Engineering College'),
+      CollegeOption(
+          collegeId: '65',
+          collegeName: 'Mahendra Institute of Technology'),
+      CollegeOption(
+          collegeId: '66',
+          collegeName: 'M.A.M. College of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '67',
+          collegeName: 'Lords Institute of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '68',
+          collegeName: 'Karunanithy Institute of Technology'),
+      CollegeOption(
+          collegeId: '69', collegeName: 'Jayamukhi Institute of Engineering'),
+      CollegeOption(
+          collegeId: '70', collegeName: 'Jawahar College of Engineering'),
+      CollegeOption(
+          collegeId: '71', collegeName: 'IITA Institute of Technology'),
+      CollegeOption(
+          collegeId: '72', collegeName: 'ITS Engineering College'),
+      CollegeOption(
+          collegeId: '73',
+          collegeName: 'Hermits College of Engineering'),
+      CollegeOption(
+          collegeId: '74', collegeName: 'Gnanamani College of Engineering'),
+      CollegeOption(
+          collegeId: '75',
+          collegeName: 'GRT Institute of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '76',
+          collegeName: 'Gtech Institute of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '77',
+          collegeName: 'Francis Xavier Engineering College'),
+      CollegeOption(
+          collegeId: '78',
+          collegeName: 'Easa College of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '79', collegeName: 'East Point College of Engineering'),
+      CollegeOption(
+          collegeId: '80',
+          collegeName: 'Dhaanish Ahmed College of Engineering'),
+      CollegeOption(
+          collegeId: '81',
+          collegeName: 'Dr Mahalingam College of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '82',
+          collegeName: 'Don Bosco Institute of Technology'),
+      CollegeOption(
+          collegeId: '83',
+          collegeName: 'Dhanalakshmi Srinivasan Engineering College'),
+      CollegeOption(
+          collegeId: '84',
+          collegeName: 'Datta Meghe College of Engineering'),
+      CollegeOption(
+          collegeId: '85',
+          collegeName: 'Cygnus Institute of Technology'),
+      CollegeOption(
+          collegeId: '86',
+          collegeName: 'Crescent Institute of Science and Technology'),
+      CollegeOption(
+          collegeId: '87',
+          collegeName: 'Coimbatore Institute of Technology'),
+      CollegeOption(
+          collegeId: '88',
+          collegeName: 'Chettinad School of Engineering'),
+      CollegeOption(
+          collegeId: '89',
+          collegeName: 'C V Raman College of Engineering'),
+      CollegeOption(
+          collegeId: '90',
+          collegeName: 'Bharath Institute of Higher Education and Research'),
+      CollegeOption(collegeId: '91', collegeName: 'Bharath University'),
+      CollegeOption(
+          collegeId: '92',
+          collegeName: 'Bharat Institute of Engineering and Technology'),
+      CollegeOption(
+          collegeId: '93',
+          collegeName: 'Bhainswal Institute of Technology'),
+      CollegeOption(
+          collegeId: '94', collegeName: 'B S Abdur Rahman Crescent University'),
+      CollegeOption(
+          collegeId: '95',
+          collegeName: 'Bharathidasan Institute of Technology'),
+      CollegeOption(
+          collegeId: '96', collegeName: 'Arjun College of Engineering'),
+      CollegeOption(
+          collegeId: '97', collegeName: 'Aksharam Engineering College'),
+      CollegeOption(
+          collegeId: '98', collegeName: 'Alliance Institute of Technology'),
+      CollegeOption(collegeId: '99', collegeName: 'Ariyalur Institute of Technology'),
+      CollegeOption(
+          collegeId: '100',
+          collegeName: 'Annamalai University Institute of Engineering'),
     ];
 
     return mockColleges;

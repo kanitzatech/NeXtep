@@ -22,7 +22,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _mobileController = TextEditingController();
-  String _selectedCategory = '';
 
   // Screen 1 Focus Nodes & Error State
   final FocusNode _nameFocusNode = FocusNode();
@@ -61,8 +60,32 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   ];
 
   // Final Selection Data
+  String _selectedCategory = '';
   String _selectedDistrict = 'Any';
   String _selectedInterest = '';
+  String _hostelPreference = ''; // 'Yes' or 'No'
+  List<String> _assignedDepartments = [];
+
+  // Interest Area to Departments Mapping
+  static const Map<String, List<String>> _interestAreaToDepartments = {
+    'App Development': ['CSE', 'IT'],
+    'Web Development': ['CSE', 'IT'],
+    'AI / ML': ['CSE', 'AI&DS'],
+    'Data Science': ['CSE', 'AI&DS'],
+    'Embedded Systems': ['ECE', 'EEE'],
+    'Core Engineering (Mechanical, Civil)': ['ME', 'CE'],
+    'Bio/Medical': ['BME'],
+  };
+
+  static const List<String> _interestAreaOptions = [
+    'App Development',
+    'Web Development',
+    'AI / ML',
+    'Data Science',
+    'Embedded Systems',
+    'Core Engineering (Mechanical, Civil)',
+    'Bio/Medical',
+  ];
 
   final List<String> _fallbackCourses = [
     'Computer Science Engineering',
@@ -727,7 +750,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   }
 
   bool _validateStep1() {
-    // Validate Step 1 (1/3): Name, Age, Mobile, Category
+    // Validate Step 1 (1/3): Name, Age, Mobile
     // Reset all error states
     final newErrors = {
       'name': _nameController.text.trim().isEmpty ||
@@ -737,7 +760,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           (int.tryParse(_ageController.text.trim()) ?? 0) > 100,
       'mobile': _mobileController.text.trim().isEmpty ||
           _mobileController.text.trim().length < 10,
-      'category': _selectedCategory.isEmpty,
     };
 
     setState(() {
@@ -760,17 +782,12 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       _showSnackBar('Please enter a valid mobile number (10 digits)');
       return false;
     }
-    if (newErrors['category'] == true) {
-      _showSnackBar('Please select a category');
-      return false;
-    }
 
     // Clear errors if all valid
     setState(() {
       _fieldErrors['name'] = false;
       _fieldErrors['age'] = false;
       _fieldErrors['mobile'] = false;
-      _fieldErrors['category'] = false;
     });
 
     return true;
@@ -849,13 +866,21 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   }
 
   bool _validateStep3() {
-    // Validate Step 3 (3/3): Preferred course and district
+    // Validate Step 3 (3/3): Interest area, district, category, and hostel preference
     if (_selectedInterest.isEmpty) {
-      _showSnackBar('Please select a preferred course');
+      _showSnackBar('Please select an area of interest');
       return false;
     }
-    if (_selectedDistrict.isEmpty) {
-      _showSnackBar('Please select a district');
+    if (_selectedDistrict.isEmpty || _selectedDistrict == 'Any') {
+      _showSnackBar('Please select a location');
+      return false;
+    }
+    if (_selectedCategory.isEmpty) {
+      _showSnackBar('Please select a category');
+      return false;
+    }
+    if (_hostelPreference.isEmpty) {
+      _showSnackBar('Please select hostel preference (Yes/No)');
       return false;
     }
     return true;
@@ -900,9 +925,15 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       return;
     }
 
-    final selectedCoursesForResults = <String>[_selectedInterest];
-    final interestQuery =
-        _courseDisplayToQuery[_selectedInterest] ?? _selectedInterest;
+    // Use assigned departments as courses for API call
+    final selectedCoursesForResults = _assignedDepartments.isNotEmpty
+        ? List<String>.from(_assignedDepartments)
+        : [_selectedInterest];
+
+    // Get the first assigned department or interest as the query
+    final interestQuery = _assignedDepartments.isNotEmpty
+        ? _assignedDepartments.first
+        : _selectedInterest;
     try {
       final String? effectiveDistrict =
           _selectedDistrict == 'Any' ? null : _selectedDistrict;
@@ -1085,13 +1116,228 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
               focusNode: _mobileFocusNode,
               hasError: _fieldErrors['mobile'] ?? false,
               onChanged: _clearMobileError),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep2() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Academic Details",
+            style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Enter your marks to calculate cutoff",
+            style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+          ),
           const SizedBox(height: 32),
+          _buildTextField("Physics Marks", "Out of 100", _physicsController,
+              isNumber: true,
+              focusNode: _physicsFocusNode,
+              hasError: _step2FieldErrors['physics'] ?? false,
+              onChanged: _clearPhysicsError),
+          const SizedBox(height: 20),
+          _buildTextField("Chemistry Marks", "Out of 100", _chemistryController,
+              isNumber: true,
+              focusNode: _chemistryFocusNode,
+              hasError: _step2FieldErrors['chemistry'] ?? false,
+              onChanged: _clearChemistryError),
+          const SizedBox(height: 20),
+          _buildTextField("Mathematics Marks", "Out of 100", _mathsController,
+              isNumber: true,
+              focusNode: _mathsFocusNode,
+              hasError: _step2FieldErrors['maths'] ?? false,
+              onChanged: _clearMathsError),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEF2FF),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  "Your Cutoff",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4F46E5)),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _cutoff.toStringAsFixed(1),
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF4F46E5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep3() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Your Preferences",
+            style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 32),
+          // 1. Cutoff Display
+          const Text(
+            "Your Cutoff Score",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "${_cutoff.toStringAsFixed(1)} / 200",
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF4F46E5),
+            ),
+          ),
+          const SizedBox(height: 32),
+          // 2. Location Preference
+          const Text(
+            "Location Preference",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                hint: const Text("Select Location"),
+                value: _selectedDistrict == 'Any' ? null : _selectedDistrict,
+                isExpanded: true,
+                items: _districtOptions
+                    .where((e) => e != 'Any')
+                    .toList()
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _selectedDistrict = val);
+                  }
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          // 3. Area of Interest
+          const Text(
+            "Area of Interest",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _interestAreaOptions.map((interest) {
+              final isSelected = _selectedInterest == interest;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedInterest = interest;
+                    _assignedDepartments =
+                        _interestAreaToDepartments[interest] ?? [];
+                  });
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF4F46E5)
+                          : Colors.grey.withValues(alpha: 0.2),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    interest,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          isSelected ? Colors.white : const Color(0xFF374151),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 32),
+          // 4. Category Selection
           const Text(
             "Select Category",
             style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF374151)),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
+            ),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -1137,153 +1383,64 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
               );
             }).toList(),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStep2() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Academic Details",
-            style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF111827)),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Enter your marks to calculate cutoff",
-            style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
-          ),
           const SizedBox(height: 32),
-          _buildTextField("Physics Marks", "Out of 100", _physicsController,
-              isNumber: true,
-              focusNode: _physicsFocusNode,
-              hasError: _step2FieldErrors['physics'] ?? false,
-              onChanged: _clearPhysicsError),
-          const SizedBox(height: 20),
-          _buildTextField("Chemistry Marks", "Out of 100", _chemistryController,
-              isNumber: true,
-              focusNode: _chemistryFocusNode,
-              hasError: _step2FieldErrors['chemistry'] ?? false,
-              onChanged: _clearChemistryError),
-          const SizedBox(height: 20),
-          _buildTextField("Mathematics Marks", "Out of 100", _mathsController,
-              isNumber: true,
-              focusNode: _mathsFocusNode,
-              hasError: _step2FieldErrors['maths'] ?? false,
-              onChanged: _clearMathsError),
-          const SizedBox(height: 40),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF2FF),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          // 5. Hostel Facility
+          const Text(
+            "Hostel Facility Required",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
             ),
-            child: Column(
-              children: [
-                const Text(
-                  "Your Cutoff",
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF4F46E5)),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _cutoff.toStringAsFixed(1),
-                  style: const TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF4F46E5),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            spacing: 12,
+            children: ['Yes', 'No'].map((option) {
+              final isSelected = _hostelPreference == option;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _hostelPreference = option),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected ? const Color(0xFF4F46E5) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF4F46E5)
+                            : Colors.grey.withValues(alpha: 0.2),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Text(
+                      option,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            isSelected ? Colors.white : const Color(0xFF374151),
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStep3() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Your Preferences",
-            style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF111827)),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Tell us what you like",
-            style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+              );
+            }).toList(),
           ),
           const SizedBox(height: 32),
+          // 6. College Preference
           const Text(
-            "Select Preferred Course",
+            "College Preference",
             style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF374151)),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
+            ),
           ),
           const SizedBox(height: 12),
-          if (_coursesLoading)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10),
-              child: LinearProgressIndicator(minHeight: 3),
-            ),
-          _buildCourseDropdown(
-            options: _courseOptions.isEmpty ? _fallbackCourses : _courseOptions,
-            selectedItem: _selectedInterest,
-            onChanged: (val) {
-              setState(() => _selectedInterest = val);
-              _loadPreferredCollegeOptions();
-            },
-          ),
-          const SizedBox(height: 32),
-          const Text(
-            "Location Preference",
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF374151)),
-          ),
-          const SizedBox(height: 12),
-          if (_districtsLoading)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10),
-              child: LinearProgressIndicator(minHeight: 3),
-            ),
-          _buildSingleSelectDropdown(
-            options: _districtOptions.isEmpty
-                ? _fallbackDistricts
-                : _districtOptions,
-            selectedItem: _selectedDistrict,
-            onChanged: (val) {
-              setState(() => _selectedDistrict = val);
-              _loadPreferredCollegeOptions();
-            },
-          ),
-          const SizedBox(height: 32),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1302,7 +1459,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Your Preferred Colleges',
+                            'Choose Colleges',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,

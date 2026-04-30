@@ -10,7 +10,6 @@ import 'package:guidex/screens/analysis_test_page.dart';
 import 'package:guidex/screens/analysis_results_page.dart';
 import 'package:guidex/models/recommendation.dart';
 import 'package:guidex/models/recommendation_result.dart';
-import 'package:guidex/services/auth/auth_scope.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

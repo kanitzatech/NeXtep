@@ -99,10 +99,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   List<String> _courseOptions = [];
   Map<String, String> _courseDisplayToQuery = {};
   bool _coursesLoading = false;
-  bool _districtsLoading = false;
   bool _collegeOptionsLoading = false;
   List<String> _districtOptions = const ['Any'];
-  List<CollegeOption> _collegeOptions = const [];
   List<CollegeOption> _selectedPreferredColleges = const [];
   static const int _maxPreferredColleges = 5;
   static const List<String> _fallbackDistricts = [
@@ -543,59 +541,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     });
   }
 
-  Future<List<CollegeOption>> _getAllCollegesFromDatabase() async {
-    try {
-      debugPrint('Fetching all colleges from database...');
-
-      final collegesMap = <String, CollegeOption>{};
-
-      final coursesToTry = [
-        'Computer Science Engineering',
-        'Information Technology',
-        'Mechanical Engineering',
-        'Civil Engineering',
-        'Electrical and Electronics Engineering',
-        'Electronics and Communication Engineering',
-        'Electronics and Instrumentation Engineering',
-        'Biomedical Engineering',
-        'Biotechnology',
-        'Chemical Engineering',
-        'Artificial Intelligence and Data Science',
-        'Automobile Engineering',
-        'Aeronautical Engineering',
-        'Artificial Intelligence and Machine Learning',
-        'Architecture',
-        'Automobile',
-      ];
-
-      for (final course in coursesToTry) {
-        try {
-          debugPrint('Fetching colleges for course: $course');
-          final options = await _apiService.getCollegeOptions(
-            preferredCourse: course,
-          );
-
-          debugPrint('  → Found ${options.length} colleges for "$course"');
-
-          for (final option in options) {
-            collegesMap[option.collegeId] = option;
-          }
-        } catch (e) {
-          debugPrint('Error fetching colleges for "$course": $e');
-        }
-      }
-
-      final allColleges = collegesMap.values.toList();
-      debugPrint('✅ Total unique colleges fetched: ${allColleges.length}');
-
-      allColleges.sort((a, b) => a.collegeName.compareTo(b.collegeName));
-      return allColleges;
-    } catch (e) {
-      debugPrint('❌ Error fetching all colleges: $e');
-      return const [];
-    }
-  }
-
   Future<void> _openPreferredCollegePicker() async {
     final selectedIds = _selectedPreferredCollegeIds.toSet();
 
@@ -654,6 +599,9 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       _showSnackBar('No colleges available. Please try again.');
       return;
     }
+
+    final selected = await showModalBottomSheet<Set<String>>(
+      context: context,
       isScrollControlled: true,
       builder: (context) {
         final searchController = TextEditingController();
@@ -845,9 +793,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       return;
     }
 
-    final selectedSet = selected.take(_maxPreferredColleges).toSet();
     final selectedOptions = allColleges
-        .where((option) => selectedSet.contains(option.collegeId))
+        .where((option) => selected.contains(option.collegeId))
         .toList();
 
     setState(() {
@@ -1808,88 +1755,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                         fontSize: 18, fontWeight: FontWeight.bold),
                   ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSingleSelectDropdown({
-    required List<String> options,
-    required String selectedItem,
-    required Function(String) onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4)),
-        ],
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: options.contains(selectedItem) ? selectedItem : options.first,
-          isExpanded: true,
-          items: options
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: (val) {
-            if (val != null) onChanged(val);
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCourseDropdown({
-    required List<String> options,
-    required String selectedItem,
-    required Function(String) onChanged,
-  }) {
-    final isEmpty = selectedItem.isEmpty;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isEmpty
-              ? Colors.grey.withValues(alpha: 0.2)
-              : const Color(0xFF1D4ED8),
-          width: isEmpty ? 1 : 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4)),
-        ],
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: isEmpty ? null : selectedItem,
-          hint: const Text(
-            'Choose',
-            style: TextStyle(
-              color: Color(0xFF9CA3AF),
-              fontSize: 16,
-            ),
-          ),
-          isExpanded: true,
-          items: options
-              .map((e) => DropdownMenuItem(
-                    value: e,
-                    child: Text(e),
-                  ))
-              .toList(),
-          onChanged: (val) {
-            if (val != null) onChanged(val);
-          },
         ),
       ),
     );

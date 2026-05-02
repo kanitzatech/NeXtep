@@ -868,10 +868,11 @@ class _AnalysisResultsPageState extends State<AnalysisResultsPage> {
                   'preferredCourse': widget.interest ??
                       (widget.selectedCourses?.firstOrNull ?? ''),
                   'district': widget.district,
-                  'hostelRequired':
-                      false, // Would need to track this from the form
+                  'hostelRequired': false,
                   'preferredCollegeIds': widget.preferredCollegeIds ?? [],
                   'preferredCollegeNames': widget.preferredColleges ?? [],
+                  'allRecommendations': _allRecommendations,
+                  'safeColleges': _safeRecommendations,
                 },
               ),
               style: ElevatedButton.styleFrom(

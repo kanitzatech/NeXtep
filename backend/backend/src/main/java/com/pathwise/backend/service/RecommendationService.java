@@ -38,9 +38,13 @@ public class RecommendationService {
 
         // ⭐ SECTION 1: Preferred Colleges Analysis (probability formula)
         List<TargetCollegeResponse.PreferredCollegeAnalysis> preferredAnalysis = new ArrayList<>();
+        Set<String> seenPreferred = new HashSet<>();
 
         // 🎯 SECTION 2: Target Colleges (weighted scoring)
-        List<TargetCollegeResponse.TargetCollege> targetColleges = new ArrayList<>();
+        Map<String, TargetCollegeResponse.TargetCollege> targetMap = new LinkedHashMap<>();
+
+        // Resolve course aliases for matching
+        String prefCourseLower = preferredCourse != null ? preferredCourse.toLowerCase() : "";
 
         for (Object[] row : rows) {
             String collegeName = String.valueOf(row[0]);
@@ -51,6 +55,8 @@ public class RecommendationService {
             String branchCode = String.valueOf(row[5]);
 
             if (collegeCutoff == null || collegeCutoff <= 0) continue;
+
+            String branchLower = branchName.toLowerCase();
 
             // --- Check if this college is in the user's preferred list ---
             boolean isPreferred = false;
@@ -64,36 +70,47 @@ public class RecommendationService {
                 }
             }
 
-            // ⭐ If preferred: calculate probability using ratio formula
-            if (isPreferred) {
-                double probability = calculateProbability(studentCutoff, collegeCutoff);
-                String chanceLabel = getProbabilityLabel(probability);
+            // ⭐ Preferred: ONLY include rows matching the user's chosen course
+            if (isPreferred && matchesCourse(prefCourseLower, branchLower)) {
+                String dedupeKey = collegeName.toLowerCase();
+                if (seenPreferred.add(dedupeKey)) {
+                    double probability = calculateProbability(studentCutoff, collegeCutoff);
+                    String chanceLabel = getProbabilityLabel(probability);
 
-                preferredAnalysis.add(TargetCollegeResponse.PreferredCollegeAnalysis.builder()
-                        .college_name(collegeName)
-                        .course(branchName)
-                        .your_cutoff(studentCutoff)
-                        .college_cutoff(collegeCutoff)
-                        .probability(Math.round(probability * 100.0) / 100.0)
-                        .chance_label(chanceLabel)
-                        .build());
+                    preferredAnalysis.add(TargetCollegeResponse.PreferredCollegeAnalysis.builder()
+                            .college_name(collegeName)
+                            .course(branchName)
+                            .your_cutoff(studentCutoff)
+                            .college_cutoff(collegeCutoff)
+                            .probability(Math.round(probability * 100.0) / 100.0)
+                            .chance_label(chanceLabel)
+                            .build());
+                }
             }
 
-            // 🎯 Calculate weighted score for ALL colleges (target section)
-            double score = calculateWeightedScore(
-                    studentCutoff, collegeCutoff,
-                    preferredCity, city, district,
-                    preferredCourse, branchCode, branchName,
-                    hostelRequired,
-                    collegeName, preferredColleges
-            );
+            // 🎯 Target: only include rows matching preferred course, deduplicate by college
+            if (matchesCourse(prefCourseLower, branchLower)) {
+                double score = calculateWeightedScore(
+                        studentCutoff, collegeCutoff,
+                        preferredCity, city, district,
+                        preferredCourse, branchCode, branchName,
+                        hostelRequired,
+                        collegeName, preferredColleges
+                );
 
-            targetColleges.add(TargetCollegeResponse.TargetCollege.builder()
-                    .college_name(collegeName)
-                    .course(branchName)
-                    .score(Math.round(score * 100.0) / 100.0)
-                    .chance_label(getWeightedChanceLabel(score))
-                    .build());
+                String key = collegeName.toLowerCase();
+                TargetCollegeResponse.TargetCollege existing = targetMap.get(key);
+                double roundedScore = Math.round(score * 100.0) / 100.0;
+
+                if (existing == null || roundedScore > existing.getScore()) {
+                    targetMap.put(key, TargetCollegeResponse.TargetCollege.builder()
+                            .college_name(collegeName)
+                            .course(branchName)
+                            .score(roundedScore)
+                            .chance_label(getWeightedChanceLabel(score))
+                            .build());
+                }
+            }
         }
 
         // Sort preferred by probability DESC
@@ -101,13 +118,14 @@ public class RecommendationService {
                 TargetCollegeResponse.PreferredCollegeAnalysis::getProbability).reversed());
 
         // Sort target by score DESC and take top 10
-        List<TargetCollegeResponse.TargetCollege> top10 = targetColleges.stream()
+        List<TargetCollegeResponse.TargetCollege> top10 = targetMap.values().stream()
                 .sorted(Comparator.comparing(TargetCollegeResponse.TargetCollege::getScore).reversed())
                 .limit(10)
                 .collect(Collectors.toList());
 
         return TargetCollegeResponse.builder()
                 .preferred_colleges_analysis(preferredAnalysis)
+
                 .target_colleges(top10)
                 .build();
     }
@@ -246,6 +264,16 @@ public class RecommendationService {
                (0.10 * hostelScore) +
                (0.10 * categoryScore) +
                (0.05 * preferenceScore);
+    }
+
+    /**
+     * Check if a branch name matches the user's preferred course.
+     * Uses direct substring match + alias expansion.
+     */
+    private boolean matchesCourse(String prefCourseLower, String branchLower) {
+        if (prefCourseLower == null || prefCourseLower.isEmpty()) return true; // no filter
+        if (branchLower.contains(prefCourseLower) || prefCourseLower.contains(branchLower)) return true;
+        return matchesCourseAlias(prefCourseLower, branchLower);
     }
 
     /**

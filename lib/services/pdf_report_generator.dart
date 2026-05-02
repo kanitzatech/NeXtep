@@ -126,8 +126,8 @@ class PdfReportGenerator {
           ),
           pw.SizedBox(height: 10),
           ..._buildCategorySection(
-            title: 'Safe Colleges',
-            subtitle: 'Higher probability options for secure admission',
+            title: 'Target Colleges',
+            subtitle: 'Top colleges by weighted scoring model',
             titleColor: _safeColor,
             items: grouped.safe,
           ),
@@ -514,7 +514,7 @@ class PdfReportGenerator {
             style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800),
           ),
           pw.Bullet(
-            text: 'Safe results: $safeCount',
+            text: 'Target colleges: $safeCount',
             style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800),
           ),
           pw.Bullet(

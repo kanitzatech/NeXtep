@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:guidex/app_routes.dart';
 import 'package:guidex/models/college_option.dart';
-import 'package:guidex/models/recommendation_result.dart';
 import 'package:guidex/models/recommendation.dart';
 import 'package:guidex/services/api_service.dart';
 
@@ -81,7 +80,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   Map<String, String> _courseDisplayToQuery = {};
   bool _coursesLoading = false;
   List<CollegeOption> _allColleges = [];
-  bool _collegesLoading = false;
   bool _collegeDropdownOpen = false;
   String _collegeSearchQuery = '';
   List<String> _districtOptions = const ['Any'];
@@ -569,7 +567,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
     setState(() {
       _allColleges = allColleges;
-      _collegesLoading = false;
     });
 
     if (collegesMap.isEmpty) {

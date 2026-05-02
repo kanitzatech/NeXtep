@@ -14,7 +14,7 @@ class ApiService {
   static const String _cloudRunBaseUrl = String.fromEnvironment(
     'CLOUD_API_BASE_URL',
     // Default endpoint for college-backend-prod Cloud Run service.
-    defaultValue: 'https://pathwise-backend-507210518116.asia-south1.run.app',
+    defaultValue: 'https://pathwise-backend-t3mkeqs5ga-el.a.run.app',
   );
 
   static const String _realDeviceHost =

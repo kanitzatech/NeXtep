@@ -11,15 +11,6 @@ public class RecommendationResponse {
 
     private String collegeName;
     private String courseName;
-    private String district;
-    private String collegeType;
     private Double cutoff;
-    private Double maxCutoff;
-    private Integer probability;
     private String category;
-
-    // Legacy fields retained for backward compatibility with older clients.
-    private Double score;
-    private String recommendationType;
-    private Integer collegeRank;
 }

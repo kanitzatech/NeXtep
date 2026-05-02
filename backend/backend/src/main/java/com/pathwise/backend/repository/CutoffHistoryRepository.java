@@ -12,179 +12,57 @@ import java.util.List;
 @Repository
 public interface CutoffHistoryRepository extends JpaRepository<CutoffHistory, CutoffHistoryId> {
 
-          @Query(value = "SELECT * " +
-           "FROM cutoff_history ch " +
-              "WHERE ((:category = 'OC' AND ch.oc_min <= :cutoff) " +
-              "OR (:category = 'BC' AND ch.bc_min <= :cutoff) " +
-              "OR (:category = 'BCM' AND ch.bcm_min <= :cutoff) " +
-              "OR (:category = 'MBC' AND ch.mbc_min <= :cutoff) " +
-              "OR (:category = 'SC' AND ch.sc_min <= :cutoff) " +
-              "OR (:category = 'SCA' AND ch.sca_min <= :cutoff) " +
-              "OR (:category = 'ST' AND ch.st_min <= :cutoff)) " +
-              "ORDER BY CASE " +
-              "WHEN :category = 'OC' THEN ch.oc_min " +
-              "WHEN :category = 'BC' THEN ch.bc_min " +
-              "WHEN :category = 'BCM' THEN ch.bcm_min " +
-              "WHEN :category = 'MBC' THEN ch.mbc_min " +
-              "WHEN :category = 'SC' THEN ch.sc_min " +
-              "WHEN :category = 'SCA' THEN ch.sca_min " +
-              "WHEN :category = 'ST' THEN ch.st_min " +
-           "END DESC",
-           nativeQuery = true)
-    List<CutoffHistory> findRecommendationsByCategoryAndCutoff(
-        @Param("category") String category,
-        @Param("cutoff") Double cutoff
-    );
-
-    @Query(value = "SELECT DISTINCT ch.branch " +
+    @Query(value = "SELECT " +
+            "ch.college_name, " +
+            "ch.branch_name, " +
+            "CASE " +
+            "  WHEN CAST(:community AS TEXT) = 'oc' THEN ch.oc " +
+            "  WHEN CAST(:community AS TEXT) = 'bc' THEN ch.bc " +
+            "  WHEN CAST(:community AS TEXT) = 'bcm' THEN ch.bcm " +
+            "  WHEN CAST(:community AS TEXT) = 'mbc' THEN ch.mbc " +
+            "  WHEN CAST(:community AS TEXT) = 'sc' THEN ch.sc " +
+            "  WHEN CAST(:community AS TEXT) = 'sca' THEN ch.sca " +
+            "  WHEN CAST(:community AS TEXT) = 'st' THEN ch.st " +
+            "END AS cutoff, " +
+            "COALESCE(c.city, '') AS city, " +
+            "COALESCE(c.district, '') AS district, " +
+            "ch.branch_name AS branch_code " +
             "FROM cutoff_history ch " +
-            "WHERE ((:category = 'OC' AND ch.oc_min <= :cutoff) " +
-            "OR (:category = 'BC' AND ch.bc_min <= :cutoff) " +
-            "OR (:category = 'BCM' AND ch.bcm_min <= :cutoff) " +
-            "OR (:category = 'MBC' AND ch.mbc_min <= :cutoff) " +
-            "OR (:category = 'SC' AND ch.sc_min <= :cutoff) " +
-            "OR (:category = 'SCA' AND ch.sca_min <= :cutoff) " +
-            "OR (:category = 'ST' AND ch.st_min <= :cutoff)) " +
-            "ORDER BY ch.branch",
+            "LEFT JOIN colleges c ON ch.college_name = c.college_name " +
+            "WHERE (CASE " +
+            "  WHEN CAST(:community AS TEXT) = 'oc' THEN ch.oc " +
+            "  WHEN CAST(:community AS TEXT) = 'bc' THEN ch.bc " +
+            "  WHEN CAST(:community AS TEXT) = 'bcm' THEN ch.bcm " +
+            "  WHEN CAST(:community AS TEXT) = 'mbc' THEN ch.mbc " +
+            "  WHEN CAST(:community AS TEXT) = 'sc' THEN ch.sc " +
+            "  WHEN CAST(:community AS TEXT) = 'sca' THEN ch.sca " +
+            "  WHEN CAST(:community AS TEXT) = 'st' THEN ch.st " +
+            "END) IS NOT NULL",
             nativeQuery = true)
-    List<String> findAvailableBranchesByCategoryAndCutoff(
-            @Param("category") String category,
-            @Param("cutoff") Double cutoff
+    List<Object[]> findTargetColleges(
+            @Param("community") String community
     );
 
-        @Query(value = "SELECT * " +
-                "FROM cutoff_history ch " +
-                "WHERE LOWER(TRIM(ch.branch)) = LOWER(TRIM(:courseName)) " +
-                "AND (CASE " +
-                "  WHEN :category = 'OC' THEN ch.oc_min " +
-                "  WHEN :category = 'BC' THEN ch.bc_min " +
-                "  WHEN :category = 'BCM' THEN ch.bcm_min " +
-                "  WHEN :category = 'MBC' THEN ch.mbc_min " +
-                "  WHEN :category = 'SC' THEN ch.sc_min " +
-                "  WHEN :category = 'SCA' THEN ch.sca_min " +
-                "  WHEN :category = 'ST' THEN ch.st_min " +
-                "END) IS NOT NULL " +
-                "AND (CASE " +
-                "  WHEN :category = 'OC' THEN ch.oc_min " +
-                "  WHEN :category = 'BC' THEN ch.bc_min " +
-                "  WHEN :category = 'BCM' THEN ch.bcm_min " +
-                "  WHEN :category = 'MBC' THEN ch.mbc_min " +
-                "  WHEN :category = 'SC' THEN ch.sc_min " +
-                "  WHEN :category = 'SCA' THEN ch.sca_min " +
-                "  WHEN :category = 'ST' THEN ch.st_min " +
-                "END) <= :maxEligibleCutoff " +
-                "ORDER BY " +
-                "CASE " +
-                "  WHEN LOWER(ch.college_name) LIKE '%anna university%' OR LOWER(ch.college_name) LIKE '%ceg%' OR LOWER(ch.college_name) LIKE '%mit campus%' OR LOWER(ch.college_name) LIKE '%act campus%' THEN 1 " +
-                "  WHEN LOWER(ch.college_name) LIKE '%ssn%' OR LOWER(ch.college_name) LIKE '%psg%' OR LOWER(ch.college_name) LIKE '%coimbatore institute of technology%' OR LOWER(ch.college_name) LIKE '%cit%' OR LOWER(ch.college_name) LIKE '%srm institute of science and technology%' OR LOWER(ch.college_name) LIKE '%srm university kattankulathur%' THEN 1 " +
-                "  WHEN LOWER(ch.college_name) LIKE '%autonomous%' THEN 2 " +
-                "  ELSE 3 " +
-                "END ASC, " +
-                "(CASE " +
-                "  WHEN :category = 'OC' THEN ch.oc_min " +
-                "  WHEN :category = 'BC' THEN ch.bc_min " +
-                "  WHEN :category = 'BCM' THEN ch.bcm_min " +
-                "  WHEN :category = 'MBC' THEN ch.mbc_min " +
-                "  WHEN :category = 'SC' THEN ch.sc_min " +
-                "  WHEN :category = 'SCA' THEN ch.sca_min " +
-                "  WHEN :category = 'ST' THEN ch.st_min " +
-                "END) DESC, ch.college_name ASC",
-                nativeQuery = true)
-        List<CutoffHistory> findRankedRecommendationsByCategoryCourseAndCutoff(
-                @Param("category") String category,
-                @Param("courseName") String courseName,
-                @Param("maxEligibleCutoff") Double maxEligibleCutoff
-        );
+    @Query(value = "SELECT DISTINCT bm.branch_name FROM branch_master bm ORDER BY bm.branch_name", nativeQuery = true)
+    List<String> findDistinctBranches();
 
-            @Query(value = "SELECT DISTINCT ch.college_code, ch.college_name " +
-                    "FROM cutoff_history ch " +
-                    "WHERE LOWER(TRIM(ch.branch)) = LOWER(TRIM(:courseName)) " +
-                    "ORDER BY ch.college_name ASC",
-                    nativeQuery = true)
-            List<Object[]> findCollegeOptionsByCourse(
-                    @Param("courseName") String courseName
-            );
+    @Query(value = "SELECT DISTINCT " +
+            "ch.college_id, " +
+            "ch.college_name, " +
+            "COALESCE(c.district, '') AS district " +
+            "FROM cutoff_history ch " +
+            "LEFT JOIN colleges c ON ch.college_name = c.college_name " +
+            "WHERE LOWER(ch.branch_name) LIKE LOWER(CONCAT('%', CAST(:courseName AS TEXT), '%')) " +
+            "ORDER BY ch.college_name", nativeQuery = true)
+    List<Object[]> findCollegesByCourseName(
+            @Param("courseName") String courseName
+    );
 
-            @Query(value = "SELECT * " +
-                    "FROM cutoff_history ch " +
-                    "WHERE ch.college_code IN (:collegeCodes) " +
-                    "AND LOWER(TRIM(ch.branch)) = LOWER(TRIM(:courseName))",
-                    nativeQuery = true)
-            List<CutoffHistory> findPreferredByCollegeCodesAndCourse(
-                    @Param("collegeCodes") List<String> collegeCodes,
-                    @Param("courseName") String courseName
-            );
-
-            @Query(value = "SELECT * " +
-                    "FROM cutoff_history ch " +
-                    "WHERE LOWER(TRIM(ch.branch)) = LOWER(TRIM(:courseName)) " +
-                    "AND (CASE " +
-                    "  WHEN :category = 'OC' THEN ch.oc_min " +
-                    "  WHEN :category = 'BC' THEN ch.bc_min " +
-                    "  WHEN :category = 'BCM' THEN ch.bcm_min " +
-                    "  WHEN :category = 'MBC' THEN ch.mbc_min " +
-                    "  WHEN :category = 'SC' THEN ch.sc_min " +
-                    "  WHEN :category = 'SCA' THEN ch.sca_min " +
-                    "  WHEN :category = 'ST' THEN ch.st_min " +
-                    "END) IS NOT NULL " +
-                    "AND (CASE " +
-                    "  WHEN :category = 'OC' THEN ch.oc_min " +
-                    "  WHEN :category = 'BC' THEN ch.bc_min " +
-                    "  WHEN :category = 'BCM' THEN ch.bcm_min " +
-                    "  WHEN :category = 'MBC' THEN ch.mbc_min " +
-                    "  WHEN :category = 'SC' THEN ch.sc_min " +
-                    "  WHEN :category = 'SCA' THEN ch.sca_min " +
-                    "  WHEN :category = 'ST' THEN ch.st_min " +
-                    "END) <= :maxEligibleCutoff " +
-                    "ORDER BY " +
-                    "(CASE " +
-                    "  WHEN :category = 'OC' THEN ch.oc_min " +
-                    "  WHEN :category = 'BC' THEN ch.bc_min " +
-                    "  WHEN :category = 'BCM' THEN ch.bcm_min " +
-                    "  WHEN :category = 'MBC' THEN ch.mbc_min " +
-                    "  WHEN :category = 'SC' THEN ch.sc_min " +
-                    "  WHEN :category = 'SCA' THEN ch.sca_min " +
-                    "  WHEN :category = 'ST' THEN ch.st_min " +
-                    "END) ASC, ch.college_name ASC",
-                    nativeQuery = true)
-            List<CutoffHistory> findSafeRecommendationsByCategoryCourseAndCutoff(
-                    @Param("category") String category,
-                    @Param("courseName") String courseName,
-                    @Param("maxEligibleCutoff") Double maxEligibleCutoff
-            );
-
-            @Query(value = "SELECT * " +
-                    "FROM cutoff_history ch " +
-                    "WHERE LOWER(TRIM(ch.branch)) = LOWER(TRIM(:branchCode)) " +
-                    "AND (CASE " +
-                    "  WHEN :category = 'OC' THEN ch.oc_min " +
-                    "  WHEN :category = 'BC' THEN ch.bc_min " +
-                    "  WHEN :category = 'BCM' THEN ch.bcm_min " +
-                    "  WHEN :category = 'MBC' THEN ch.mbc_min " +
-                    "  WHEN :category = 'SC' THEN ch.sc_min " +
-                    "  WHEN :category = 'SCA' THEN ch.sca_min " +
-                    "  WHEN :category = 'ST' THEN ch.st_min " +
-                    "END) IS NOT NULL " +
-                    "AND (CASE " +
-                    "  WHEN :category = 'OC' THEN ch.oc_max " +
-                    "  WHEN :category = 'BC' THEN ch.bc_max " +
-                    "  WHEN :category = 'BCM' THEN ch.bcm_max " +
-                    "  WHEN :category = 'MBC' THEN ch.mbc_max " +
-                    "  WHEN :category = 'SC' THEN ch.sc_max " +
-                    "  WHEN :category = 'SCA' THEN ch.sca_max " +
-                    "  WHEN :category = 'ST' THEN ch.st_max " +
-                    "END) IS NOT NULL " +
-                    "ORDER BY ch.college_name ASC",
-                    nativeQuery = true)
-            List<CutoffHistory> findByCategoryAndExactBranchWithCommunityRange(
-                    @Param("category") String category,
-                    @Param("branchCode") String branchCode
-            );
-
-            @Query(value = "SELECT DISTINCT UPPER(TRIM(ch.branch)) " +
-                    "FROM cutoff_history ch " +
-                    "WHERE ch.branch IS NOT NULL AND TRIM(ch.branch) <> '' " +
-                    "ORDER BY UPPER(TRIM(ch.branch))",
-                    nativeQuery = true)
-            List<String> findDistinctBranchesFromCutoffHistory();
+    @Query(value = "SELECT DISTINCT " +
+            "c.college_id, " +
+            "c.college_name, " +
+            "c.district " +
+            "FROM colleges c " +
+            "ORDER BY c.college_name", nativeQuery = true)
+    List<Object[]> findAllColleges();
 }

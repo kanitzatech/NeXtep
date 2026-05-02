@@ -49,11 +49,25 @@ function Ensure-DeploymentEnv {
         [hashtable]$EnvMap
     )
 
-    $required = @("DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD")
+    $required = @("DB_NAME", "DB_USER", "DB_PASSWORD")
     foreach ($key in $required) {
         if (-not $EnvMap.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($EnvMap[$key])) {
             throw "Missing required Cloud Run env var: $key"
         }
+    }
+
+    # DB_HOST and DB_PORT are required only if CLOUD_SQL_CONNECTION_NAME is NOT present
+    if (-not $EnvMap.ContainsKey("CLOUD_SQL_CONNECTION_NAME") -or [string]::IsNullOrWhiteSpace($EnvMap["CLOUD_SQL_CONNECTION_NAME"])) {
+        if (-not $EnvMap.ContainsKey("DB_HOST") -or [string]::IsNullOrWhiteSpace($EnvMap["DB_HOST"])) {
+            throw "Missing required Cloud Run env var: DB_HOST (required when CLOUD_SQL_CONNECTION_NAME is absent)"
+        }
+        if (-not $EnvMap.ContainsKey("DB_PORT") -or [string]::IsNullOrWhiteSpace($EnvMap["DB_PORT"])) {
+            throw "Missing required Cloud Run env var: DB_PORT (required when CLOUD_SQL_CONNECTION_NAME is absent)"
+        }
+    } else {
+        # If using Cloud SQL, the proxy runs on localhost:5432
+        if (-not $EnvMap.ContainsKey("DB_HOST")) { $EnvMap["DB_HOST"] = "127.0.0.1" }
+        if (-not $EnvMap.ContainsKey("DB_PORT")) { $EnvMap["DB_PORT"] = "5432" }
     }
 
     if (-not $EnvMap.ContainsKey("SPRING_PROFILES_ACTIVE")) {
@@ -64,9 +78,9 @@ function Ensure-DeploymentEnv {
         $EnvMap["DB_SSLMODE"] = "prefer"
     }
 
-    if (-not $EnvMap.ContainsKey("SPRING_JPA_HIBERNATE_DDL_AUTO")) {
-        $EnvMap["SPRING_JPA_HIBERNATE_DDL_AUTO"] = "none"
-    }
+    # Safe default for production
+    $EnvMap["SPRING_JPA_HIBERNATE_DDL_AUTO"] = "none"
+    $EnvMap["SPRING_SQL_INIT_MODE"] = "never"
 
     return $EnvMap
 }

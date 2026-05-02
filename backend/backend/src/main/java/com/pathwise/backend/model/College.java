@@ -31,4 +31,7 @@ public class College {
 
     @Column(name = "hostel_available")
     private Boolean hostelAvailable;
+
+    @Column(name = "transport_available")
+    private Boolean transportAvailable;
 }

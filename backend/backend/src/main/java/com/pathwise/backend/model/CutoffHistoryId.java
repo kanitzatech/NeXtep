@@ -10,6 +10,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 @EqualsAndHashCode
 public class CutoffHistoryId implements Serializable {
-    private String collegeCode;
-    private String branch;
+    private String collegeId;
+    private String branchName;
 }

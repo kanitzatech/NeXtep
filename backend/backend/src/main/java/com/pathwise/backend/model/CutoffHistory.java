@@ -14,55 +14,34 @@ import lombok.*;
 public class CutoffHistory {
 
     @Id
-    @Column(name = "college_code")
-    private String collegeCode;
+    @Column(name = "college_id")
+    private String collegeId;
 
     @Id
-    @Column(name = "branch")
-    private String branch;
+    @Column(name = "branch_name")
+    private String branchName;
 
     @Column(name = "college_name")
     private String collegeName;
 
-    @Column(name = "oc_max")
-    private Double ocMax;
+    @Column(name = "oc")
+    private Double oc;
 
-    @Column(name = "oc_min")
-    private Double ocMin;
+    @Column(name = "bc")
+    private Double bc;
 
-    @Column(name = "bcm_max")
-    private Double bcmMax;
+    @Column(name = "bcm")
+    private Double bcm;
 
-    @Column(name = "bcm_min")
-    private Double bcmMin;
+    @Column(name = "mbc")
+    private Double mbc;
 
-    @Column(name = "bc_max")
-    private Double bcMax;
+    @Column(name = "sc")
+    private Double sc;
 
-    @Column(name = "bc_min")
-    private Double bcMin;
+    @Column(name = "sca")
+    private Double sca;
 
-    @Column(name = "mbc_max")
-    private Double mbcMax;
-
-    @Column(name = "mbc_min")
-    private Double mbcMin;
-
-    @Column(name = "sc_max")
-    private Double scMax;
-
-    @Column(name = "sc_min")
-    private Double scMin;
-
-    @Column(name = "sca_max")
-    private Double scaMax;
-
-    @Column(name = "sca_min")
-    private Double scaMin;
-
-    @Column(name = "st_max")
-    private Double stMax;
-
-    @Column(name = "st_min")
-    private Double stMin;
+    @Column(name = "st")
+    private Double st;
 }

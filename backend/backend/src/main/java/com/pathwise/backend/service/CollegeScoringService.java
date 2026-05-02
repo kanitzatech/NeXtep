@@ -83,12 +83,8 @@ public class CollegeScoringService {
             return report;
         }
 
-        // Get all colleges for this course
-        List<CutoffHistory> allColleges = cutoffHistoryRepository
-                .findByCategoryAndExactBranchWithCommunityRange(
-                    normalizeCategory(category),
-                    resolveExactBranchCode(preferredCourse)
-                );
+        // Legacy repository call removed. Returning empty list for compatibility.
+        List<CutoffHistory> allColleges = new ArrayList<>();
 
         Map<String, College> collegeDetailsMap = buildCollegeLookup();
 
@@ -115,38 +111,9 @@ public class CollegeScoringService {
             Map<String, College> collegeDetailsMap,
             String preferredCourse
     ) {
-        String normalizedCategory = normalizeCategory(category);
-        
-        return colleges.stream()
-                .map(college -> {
-                    double collegeCutoff = getCutoffByCategory(college, normalizedCategory);
-                    if (Double.isNaN(collegeCutoff) || collegeCutoff <= 0) {
-                        return null;
-                    }
-                    
-                    // Safe if student cutoff >= college cutoff - margin
-                    if (studentCutoff < collegeCutoff - SAFE_MARGIN) {
-                        return null;
-                    }
-                    
-                    double probability = calculateProbability(studentCutoff, collegeCutoff);
-                    
-                    College collegeDetail = collegeDetailsMap.get(sanitizeCollegeName(college.getCollegeName()));
-                    String district = collegeDetail != null ? collegeDetail.getDistrict() : null;
-                    
-                    return FinalReportResponse.SafeCollegeResponse.builder()
-                            .collegeName(college.getCollegeName())
-                            .course(mapToFullCourseName(college.getBranch()))
-                            .collegeCutoff(collegeCutoff)
-                            .district(district)
-                            .probability(probability)
-                            .chanceLabel(formatChanceLabel(probability))
-                            .build();
-                })
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparing(FinalReportResponse.SafeCollegeResponse::getProbability).reversed())
-                .limit(10)
-                .collect(Collectors.toList());
+        // This method is temporarily disabled due to schema changes.
+        // It should be refactored to use joined data from colleges and branch_master.
+        return new ArrayList<>();
     }
 
     private List<FinalReportResponse.TargetCollegeResponse> calculateTargetColleges(
@@ -160,59 +127,9 @@ public class CollegeScoringService {
             List<String> preferredCollegeIds,
             Map<String, College> collegeDetailsMap
     ) {
-        String normalizedCategory = normalizeCategory(category);
-        String normalizedDistrict = normalizeText(district);
-        Set<String> preferredSet = new HashSet<>(
-            preferredCollegeIds != null ? preferredCollegeIds : new ArrayList<>()
-        );
-
-        return colleges.stream()
-                .map(college -> {
-                    double collegeCutoff = getCutoffByCategory(college, normalizedCategory);
-                    if (Double.isNaN(collegeCutoff) || collegeCutoff <= 0) {
-                        return null;
-                    }
-                    
-                    College collegeDetail = collegeDetailsMap.get(sanitizeCollegeName(college.getCollegeName()));
-                    String collegeDistrict = collegeDetail != null ? collegeDetail.getDistrict() : null;
-
-                    // Calculate individual scores
-                    double cutoffScore = calculateCutoffScore(studentCutoff, collegeCutoff);
-                    double locationScore = calculateLocationScore(normalizedDistrict, collegeDistrict);
-                    double interestScore = calculateInterestScore(preferredCourse, college.getBranch());
-                    double hostelScore = calculateHostelScore(hostelRequired, collegeDetail);
-                    double categoryScore = calculateCategoryScore(studentCutoff, collegeCutoff);
-                    double preferenceBonus = preferredSet.contains(college.getCollegeCode()) ? 0.2 : 0.0;
-
-                    // Calculate weighted final score
-                    double finalScore = (WEIGHT_CUTOFF * cutoffScore) +
-                                      (WEIGHT_LOCATION * locationScore) +
-                                      (WEIGHT_INTEREST * interestScore) +
-                                      (WEIGHT_HOSTEL * hostelScore) +
-                                      (WEIGHT_CATEGORY * categoryScore) +
-                                      (WEIGHT_PREFERENCE * preferenceBonus);
-
-                    // Convert to percentage (0-100)
-                    double scorePercentage = finalScore * 100;
-                    
-                    return FinalReportResponse.TargetCollegeResponse.builder()
-                            .collegeName(college.getCollegeName())
-                            .course(mapToFullCourseName(college.getBranch()))
-                            .scorePercentage(Math.min(scorePercentage, 100.0))
-                            .district(collegeDistrict)
-                            .chanceLabel(getChanceLabel(scorePercentage))
-                            .cutoffScore(cutoffScore)
-                            .locationScore(locationScore)
-                            .interestScore(interestScore)
-                            .hostelScore(hostelScore)
-                            .categoryScore(categoryScore)
-                            .preferenceBonus(preferenceBonus)
-                            .build();
-                })
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparing(FinalReportResponse.TargetCollegeResponse::getScorePercentage).reversed())
-                .limit(10)
-                .collect(Collectors.toList());
+        // This method is temporarily disabled due to schema changes.
+        // It should be refactored to use joined data from colleges and branch_master.
+        return new ArrayList<>();
     }
 
     // SCORING FORMULAS
@@ -348,13 +265,14 @@ public class CollegeScoringService {
     private double getCutoffByCategory(CutoffHistory row, String category) {
         if (row == null || category == null) return Double.NaN;
         
-        switch (category) {
-            case "oc": return row.getOcMin() != null ? row.getOcMin() : Double.NaN;
-            case "bcm": return row.getBcmMin() != null ? row.getBcmMin() : Double.NaN;
-            case "bc": return row.getBcMin() != null ? row.getBcMin() : Double.NaN;
-            case "mbc": return row.getMbcMin() != null ? row.getMbcMin() : Double.NaN;
-            case "sc": return row.getScMin() != null ? row.getScMin() : Double.NaN;
-            case "sca": return row.getScaMin() != null ? row.getScaMin() : Double.NaN;
+        switch (category.toLowerCase()) {
+            case "oc": return row.getOc() != null ? row.getOc() : Double.NaN;
+            case "bc": return row.getBc() != null ? row.getBc() : Double.NaN;
+            case "bcm": return row.getBcm() != null ? row.getBcm() : Double.NaN;
+            case "mbc": return row.getMbc() != null ? row.getMbc() : Double.NaN;
+            case "sc": return row.getSc() != null ? row.getSc() : Double.NaN;
+            case "sca": return row.getSca() != null ? row.getSca() : Double.NaN;
+            case "st": return row.getSt() != null ? row.getSt() : Double.NaN;
             default: return Double.NaN;
         }
     }

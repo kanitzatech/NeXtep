@@ -82,9 +82,18 @@ class _FinalReportPageState extends State<FinalReportPage> {
   
   /// Returns only the student explicitly preferred colleges
   List<dynamic> get _explicitPreferredColleges {
-    if (widget.preferredRecommendations != null && widget.preferredRecommendations!.isNotEmpty) {
+    // Priority 1: What is actually being displayed in the "Preferred Colleges" section
+    final displayed = _preferredCollegesForDisplay;
+    if (displayed.isNotEmpty) {
+      return displayed;
+    }
+
+    // Fallback: widget-passed recommendations
+    if (widget.preferredRecommendations != null &&
+        widget.preferredRecommendations!.isNotEmpty) {
       return widget.preferredRecommendations!;
     }
+    // Final fallback: matched targets
     return _allTargets.where((c) => c.preferenceBonus > 0).toList();
   }
 

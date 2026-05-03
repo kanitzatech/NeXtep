@@ -7,6 +7,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:guidex/models/final_report_response.dart';
+import 'package:guidex/models/recommendation.dart';
 
 class ReportExportService {
   static const _bgStart = PdfColor.fromInt(0xFFEAF4FF);
@@ -362,13 +363,13 @@ class ReportExportService {
       cutoff = c.cutoff;
       score = c.scorePercentage;
       district = c.district ?? 'N/A';
-    } else if (c.runtimeType.toString() == 'SafeCollegeResponse') {
+    } else if (c is SafeCollegeResponse) {
       name = c.collegeName;
       course = c.course;
       cutoff = c.collegeCutoff;
       score = c.probability;
       district = c.district ?? 'N/A';
-    } else if (c.runtimeType.toString() == 'Recommendation') {
+    } else if (c is Recommendation) {
       name = c.collegeName;
       course = c.courseName;
       cutoff = c.cutoff;

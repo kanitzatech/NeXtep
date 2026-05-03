@@ -95,6 +95,7 @@ class MyApp extends StatelessWidget {
                 [],
             allRecommendations: args?['allRecommendations'] as List<Recommendation>?,
             safeColleges: args?['safeColleges'] as List<Recommendation>?,
+            preferredRecommendations: args?['preferredRecommendations'] as List<Recommendation>?,
           );
         },
       },

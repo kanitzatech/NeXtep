@@ -5,7 +5,7 @@ import 'package:guidex/app_routes.dart';
 import 'package:guidex/models/recommendation.dart';
 import 'package:guidex/models/recommendation_result.dart';
 import 'package:guidex/services/api_service.dart';
-import 'package:guidex/services/pdf_report_generator.dart';
+import 'package:guidex/services/report_export_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AnalysisResultsPage extends StatefulWidget {
@@ -873,6 +873,7 @@ class _AnalysisResultsPageState extends State<AnalysisResultsPage> {
                   'preferredCollegeNames': widget.preferredColleges ?? [],
                   'allRecommendations': _allRecommendations,
                   'safeColleges': _safeRecommendations,
+                  'preferredRecommendations': _preferredRecommendations,
                 },
               ),
               style: ElevatedButton.styleFrom(
@@ -1025,20 +1026,14 @@ class _AnalysisResultsPageState extends State<AnalysisResultsPage> {
     });
 
     try {
-      await PdfReportGenerator.generateAndDownloadPdf(
-        AnalysisPdfReportData(
-          fileName: '${_buildFileName()}.pdf',
-          name: _resolvedName,
-          category: _resolvedCategory,
-          cutoff: _resolvedCutoff,
-          selectedCourse: _resolvedSelectedCourses.join(', '),
-          summary:
-              'You have ${_allRecommendations.length} matching colleges with a cutoff of ${_resolvedCutoff.toStringAsFixed(1)} in $_resolvedCategory category. Review your preferred and safe options carefully before finalizing decisions.',
-          preferredColleges: _preferredRecommendations,
-          safeColleges: _safeRecommendations,
-          selectedPreferredCollegeNames: _resolvedPreferredCollegeNames,
-          logoAssetPath: 'assets/image/category.png',
-        ),
+      await ReportExportService.exportToPDF(
+        studentName: _resolvedName,
+        studentCutoff: _resolvedCutoff,
+        category: _resolvedCategory,
+        preferredCourse: _resolvedSelectedCourses.join(', '),
+        safeColleges: _safeRecommendations,
+        targetColleges: [],
+        preferredColleges: _preferredRecommendations,
       );
 
       if (!mounted) {

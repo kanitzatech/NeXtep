@@ -717,43 +717,15 @@ class ApiService {
     /// Match user-selected colleges with backend recommendations.
     /// Uses multiple strategies: exact match → prefix match → significant overlap.
     bool isUserSelected(Recommendation item) {
-      if (preferredNameTokens.isEmpty) {
-        return false;
-      }
-
+      if (preferredNameTokens.isEmpty) return false;
       final collegeToken = _normalizeToken(item.collegeName);
-      if (collegeToken.isEmpty) {
-        return false;
-      }
-
+      if (collegeToken.isEmpty) return false;
+      
       for (final token in preferredNameTokens) {
         if (token.isEmpty) continue;
-
-        // Strategy 1: Exact match after normalization.
-        if (collegeToken == token) return true;
-
-        // Strategy 2: One starts with the other (handles name truncation/extras).
-        // Minimum 15 chars to prevent short names like 'mit' from matching.
-        if (token.length >= 15 && collegeToken.startsWith(token)) return true;
-        if (collegeToken.length >= 15 && token.startsWith(collegeToken)) {
-          return true;
-        }
-
-        // Strategy 3: Significant substring overlap (one contains the other).
-        // Both must be substantial (>=20 chars) and shorter >= 50% of longer.
-        if (token.length >= 20 && collegeToken.length >= 20) {
-          if (collegeToken.contains(token) || token.contains(collegeToken)) {
-            final shorter =
-                token.length < collegeToken.length ? token : collegeToken;
-            final longer =
-                token.length < collegeToken.length ? collegeToken : token;
-            if (shorter.length >= longer.length * 0.5) {
-              return true;
-            }
-          }
-        }
+        // Match if one contains the other (handles addresses/truncation)
+        if (collegeToken.contains(token) || token.contains(collegeToken)) return true;
       }
-
       return false;
     }
 

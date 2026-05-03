@@ -15,6 +15,7 @@ class FinalReportPage extends StatefulWidget {
   final List<String> preferredCollegeNames;
   final List<Recommendation>? allRecommendations;
   final List<Recommendation>? safeColleges;
+  final List<Recommendation>? preferredRecommendations;
 
   const FinalReportPage({
     super.key,
@@ -28,6 +29,7 @@ class FinalReportPage extends StatefulWidget {
     required this.preferredCollegeNames,
     this.allRecommendations,
     this.safeColleges,
+    this.preferredRecommendations,
   });
 
   @override
@@ -51,33 +53,39 @@ class _FinalReportPageState extends State<FinalReportPage> {
     _loadFinalReport();
   }
 
-  /// Returns the target colleges to display:
-  /// Prefers backend data; falls back to client-side computed list.
+  List<TargetCollegeResponse> get _allTargets {
+    if (_finalReportResponse != null && _finalReportResponse!.targetColleges.isNotEmpty) {
+      return _finalReportResponse!.targetColleges;
+    }
+    return _clientSideTargetColleges;
+  }
+
   /// Returns exactly 5 preferred colleges (user selections + next best matches)
   List<TargetCollegeResponse> get _preferredColleges {
-      final preferred = _clientSideTargetColleges.where((c) => c.preferenceBonus > 0).toList();
-      if (preferred.length >= 5) return preferred.take(5).toList();
-      
-      // If fewer than 5 preferred, fill with the next best overall colleges not already included
-      final others = _clientSideTargetColleges.where((c) => c.preferenceBonus == 0).toList();
-      return [...preferred, ...others].take(5).toList();
+    final preferred = _allTargets.where((c) => c.preferenceBonus > 0).toList();
+    if (preferred.length >= 5) return preferred.take(5).toList();
+
+    // If fewer than 5 preferred, fill with the next best overall colleges not already included
+    final others = _allTargets.where((c) => c.preferenceBonus == 0).toList();
+    return [...preferred, ...others].take(5).toList();
   }
 
   /// Returns the next 15 target colleges (not in preferred)
   List<TargetCollegeResponse> get _targetColleges {
-      final preferred = _preferredColleges;
-      return _clientSideTargetColleges
-          .where((c) => !preferred.any((p) => p.collegeName == c.collegeName && p.course == c.course))
-          .take(15)
-          .toList();
+    final preferred = _preferredColleges;
+    return _allTargets
+        .where((c) => !preferred
+            .any((p) => p.collegeName == c.collegeName && p.course == c.course))
+        .take(15)
+        .toList();
   }
-
-  /// Returns empty as we now use _preferredColleges and _targetColleges
-  List<TargetCollegeResponse> get _dreamColleges => [];
-
-  /// Returns the safe colleges (> 90% probability)
-  List<TargetCollegeResponse> get _safeColleges {
-      return _clientSideTargetColleges.where((c) => c.scorePercentage >= 95).toList();
+  
+  /// Returns only the student explicitly preferred colleges
+  List<dynamic> get _explicitPreferredColleges {
+    if (widget.preferredRecommendations != null && widget.preferredRecommendations!.isNotEmpty) {
+      return widget.preferredRecommendations!;
+    }
+    return _allTargets.where((c) => c.preferenceBonus > 0).toList();
   }
 
   Future<void> _loadFinalReport() async {
@@ -96,9 +104,11 @@ class _FinalReportPageState extends State<FinalReportPage> {
       // If backend returned no target colleges, compute client-side
       List<TargetCollegeResponse> clientTargets = [];
       if (response.targetColleges.isEmpty) {
-        debugPrint('Backend returned 0 target colleges → computing client-side...');
+        debugPrint(
+            'Backend returned 0 target colleges → computing client-side...');
         clientTargets = await _computeTargetCollegesClientSide();
-        debugPrint('Client-side computed ${clientTargets.length} target colleges.');
+        debugPrint(
+            'Client-side computed ${clientTargets.length} target colleges.');
       }
 
       if (mounted) {
@@ -127,16 +137,9 @@ class _FinalReportPageState extends State<FinalReportPage> {
       category: widget.category,
       studentCutoff: widget.studentCutoff,
       preferredCourse: widget.preferredCourse,
-      safeColleges: [], // Integrated into target/preferred lists
+      safeColleges: _preferredColleges,
       targetColleges: _targetColleges,
-      preferredColleges: _preferredColleges,
-    );
-  }
-
-  Future<void> _downloadAsPNG() async {
-    await ReportExportService.exportToPNG(
-      boundaryKey: _reportKey,
-      fileName: '${widget.studentName}_Report_Summary',
+      preferredColleges: _explicitPreferredColleges,
     );
   }
 
@@ -168,7 +171,7 @@ class _FinalReportPageState extends State<FinalReportPage> {
       if (allColleges.isEmpty) return [];
 
       final preferredNamesLower = widget.preferredCollegeNames
-          .map((n) => n.toLowerCase().trim())
+          .map((n) => n.toLowerCase().trim().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim())
           .toList();
 
       final scored = <_ScoredCollege>[];
@@ -180,20 +183,25 @@ class _FinalReportPageState extends State<FinalReportPage> {
         // ── 1. CUTOFF SCORE (40%) ──────────────────────────────────────
         final ratio = studentCutoff / collegeCutoff;
         double cutoffScore;
-        if (ratio >= 1.0)       cutoffScore = 1.0;
-        else if (ratio >= 0.85) cutoffScore = ratio;
-        else if (ratio >= 0.7)  cutoffScore = ratio * 0.8;
-        else                    cutoffScore = ratio * 0.5;
+        if (ratio >= 1.0) {
+          cutoffScore = 1.0;
+        } else if (ratio >= 0.85) {
+          cutoffScore = ratio;
+        } else if (ratio >= 0.7) {
+          cutoffScore = ratio * 0.8;
+        } else {
+          cutoffScore = ratio * 0.5;
+        }
 
         // ── 2. LOCATION SCORE (20%) ────────────────────────────────────
         double locationScore;
         final prefDistrict = widget.district?.trim().toLowerCase() ?? '';
-        final colDistrict  = (college.district ?? '').trim().toLowerCase();
+        final colDistrict = (college.district ?? '').trim().toLowerCase();
         if (prefDistrict.isEmpty) {
           locationScore = 1.0; // No preference → no penalty
         } else if (colDistrict == prefDistrict ||
-                   colDistrict.contains(prefDistrict) ||
-                   prefDistrict.contains(colDistrict)) {
+            colDistrict.contains(prefDistrict) ||
+            prefDistrict.contains(colDistrict)) {
           locationScore = 1.0; // Exact / nearby match
         } else {
           locationScore = 0.3; // No match
@@ -202,8 +210,9 @@ class _FinalReportPageState extends State<FinalReportPage> {
         // ── 3. INTEREST SCORE (15%) ────────────────────────────────────
         double interestScore;
         final prefCourse = widget.preferredCourse.trim().toLowerCase();
-        final colCourse  = college.courseName.trim().toLowerCase();
-        if (colCourse == prefCourse || colCourse.contains(prefCourse) ||
+        final colCourse = college.courseName.trim().toLowerCase();
+        if (colCourse == prefCourse ||
+            colCourse.contains(prefCourse) ||
             prefCourse.contains(colCourse)) {
           interestScore = 1.0; // Exact match
         } else if (_courseRelated(prefCourse, colCourse)) {
@@ -222,43 +231,51 @@ class _FinalReportPageState extends State<FinalReportPage> {
         const double categoryScore = 1.0;
 
         // ── 6. PREFERENCE BOOST (5%) ───────────────────────────────────
-        final colNameLower = college.collegeName.toLowerCase().trim();
+        final colNameLower = college.collegeName.toLowerCase().trim().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
         final isPreferred = preferredNamesLower.any((p) =>
             p.isNotEmpty &&
             (colNameLower.contains(p) || p.contains(colNameLower)));
+        final isPreferredCourse = college.courseName.trim().toLowerCase() ==
+            widget.preferredCourse.trim().toLowerCase();
         final double prefScore = isPreferred ? 1.0 : 0.0;
 
         // ── FINAL WEIGHTED SCORE ───────────────────────────────────────
         final finalScore = (0.40 * cutoffScore) +
-                           (0.20 * locationScore) +
-                           (0.15 * interestScore) +
-                           (0.10 * hostelScore) +
-                           (0.10 * categoryScore) +
-                           (0.05 * prefScore);
+            (0.20 * locationScore) +
+            (0.15 * interestScore) +
+            (0.10 * hostelScore) +
+            (0.10 * categoryScore) +
+            (0.05 * prefScore);
 
         final probability = finalScore * 100.0;
 
         // ── NO FILTER: Include all ranges ─────────────────────────────
         String label;
-        if (probability >= 95)      label = 'Safe';
-        else if (probability >= 75) label = 'Target';
-        else if (probability >= 60) label = 'Dream';
-        else                        label = 'Competitive';
+        if (probability >= 95) {
+          label = 'Safe';
+        } else if (probability >= 75) {
+          label = 'Target';
+        } else if (probability >= 60) {
+          label = 'Dream';
+        } else {
+          label = 'Competitive';
+        }
 
-        if (finalScore >= 0.35) { // Show everything with >35% chance
+        if (finalScore >= 0.35) {
+          // Show everything with >35% chance
           scored.add(_ScoredCollege(
             finalScore: finalScore,
             response: TargetCollegeResponse(
-              collegeName:    college.collegeName,
-              course:         college.courseName,
+              collegeName: college.collegeName,
+              course: college.courseName,
               scorePercentage: double.parse(probability.toStringAsFixed(2)),
-              district:       college.district ?? '',
-              chanceLabel:    label,
-              cutoffScore:    double.parse(cutoffScore.toStringAsFixed(2)),
-              locationScore:  double.parse(locationScore.toStringAsFixed(2)),
-              interestScore:  double.parse(interestScore.toStringAsFixed(2)),
-              hostelScore:    double.parse(hostelScore.toStringAsFixed(2)),
-              categoryScore:  double.parse(categoryScore.toStringAsFixed(2)),
+              district: college.district ?? '',
+              chanceLabel: label,
+              cutoffScore: double.parse(cutoffScore.toStringAsFixed(2)),
+              locationScore: double.parse(locationScore.toStringAsFixed(2)),
+              interestScore: double.parse(interestScore.toStringAsFixed(2)),
+              hostelScore: double.parse(hostelScore.toStringAsFixed(2)),
+              categoryScore: double.parse(categoryScore.toStringAsFixed(2)),
               preferenceBonus: prefScore,
               cutoff: college.cutoff,
             ),
@@ -278,20 +295,22 @@ class _FinalReportPageState extends State<FinalReportPage> {
   /// Returns true if two course strings are related (e.g. CSE ↔ Computer Science)
   bool _courseRelated(String pref, String actual) {
     const aliases = <String, List<String>>{
-      'computer science engineering':         ['cse', 'computer science', 'cs'],
-      'information technology':               ['it'],
-      'electronics and communication':        ['ece', 'ec'],
-      'electrical and electronics':           ['eee', 'ee'],
-      'mechanical engineering':               ['me', 'mech'],
+      'computer science engineering': ['cse', 'computer science', 'cs'],
+      'information technology': ['it'],
+      'electronics and communication': ['ece', 'ec'],
+      'electrical and electronics': ['eee', 'ee'],
+      'mechanical engineering': ['me', 'mech'],
       'artificial intelligence and data science': ['ai', 'aids', 'ad', 'ai ds'],
-      'civil engineering':                    ['ce', 'civil'],
-      'biomedical engineering':               ['bme', 'bio'],
-      'biotechnology':                        ['bt', 'bio'],
+      'civil engineering': ['ce', 'civil'],
+      'biomedical engineering': ['bme', 'bio'],
+      'biotechnology': ['bt', 'bio'],
     };
     for (final entry in aliases.entries) {
       final variants = [entry.key, ...entry.value];
-      final prefMatches   = variants.any((v) => pref.contains(v) || v.contains(pref));
-      final actualMatches = variants.any((v) => actual.contains(v) || v.contains(actual));
+      final prefMatches =
+          variants.any((v) => pref.contains(v) || v.contains(pref));
+      final actualMatches =
+          variants.any((v) => actual.contains(v) || v.contains(actual));
       if (prefMatches && actualMatches) return true;
     }
     return false;
@@ -333,7 +352,7 @@ class _FinalReportPageState extends State<FinalReportPage> {
         elevation: 0,
         backgroundColor: const Color(0xFF4F46E5),
       ),
-      body: _isLoading 
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: RepaintBoundary(
@@ -351,7 +370,7 @@ class _FinalReportPageState extends State<FinalReportPage> {
                       // Safe Colleges Section
                       _buildSafeCollegesSection(),
                       const SizedBox(height: 16),
-                      
+
                       if (_errorMessage != null)
                         Container(
                           padding: const EdgeInsets.all(16),
@@ -361,7 +380,7 @@ class _FinalReportPageState extends State<FinalReportPage> {
                             style: TextStyle(color: Colors.red.shade700),
                           ),
                         ),
-                      
+
                       // Target Colleges Section
                       _buildTargetCollegesSection(),
                       const SizedBox(height: 24),
@@ -376,7 +395,6 @@ class _FinalReportPageState extends State<FinalReportPage> {
             ),
     );
   }
-
 
   Widget _buildStudentHeader() {
     return Container(
@@ -660,7 +678,11 @@ class _FinalReportPageState extends State<FinalReportPage> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: college.probability >= 75 ? Colors.green.shade700 : (college.probability >= 60 ? Colors.orange.shade700 : Colors.red.shade700),
+                    color: college.probability >= 75
+                        ? Colors.green.shade700
+                        : (college.probability >= 60
+                            ? Colors.orange.shade700
+                            : Colors.red.shade700),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -670,11 +692,13 @@ class _FinalReportPageState extends State<FinalReportPage> {
                   children: [
                     Text(
                       '📊 Your cutoff: ${widget.studentCutoff.toStringAsFixed(1)}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                     Text(
                       '📉 College cutoff: ${college.cutoff.toStringAsFixed(1)}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                   ],
                 ),
@@ -767,7 +791,9 @@ class _FinalReportPageState extends State<FinalReportPage> {
                     fontWeight: FontWeight.w600,
                     color: prob >= 75
                         ? Colors.green.shade700
-                        : (prob >= 60 ? Colors.orange.shade700 : Colors.red.shade700),
+                        : (prob >= 60
+                            ? Colors.orange.shade700
+                            : Colors.red.shade700),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -777,11 +803,13 @@ class _FinalReportPageState extends State<FinalReportPage> {
                   children: [
                     Text(
                       '📊 Your cutoff: ${widget.studentCutoff.toStringAsFixed(1)}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                     Text(
                       '📉 College cutoff: ${college.collegeCutoff.toStringAsFixed(1)}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                   ],
                 ),
@@ -802,16 +830,19 @@ class _FinalReportPageState extends State<FinalReportPage> {
       children: [
         // Preferred Colleges Header (UI)
         if (preferred.isNotEmpty) ...[
-          _buildCategoryHeader('Preferred Choices', 'Your selected top 5 matches', Colors.blue.shade600),
+          _buildCategoryHeader('Preferred Choices',
+              'Your selected top 5 matches', Colors.blue.shade600),
           const SizedBox(height: 12),
-          ...preferred.asMap().entries.map((entry) => _buildTargetCollegeCard(entry.value, entry.key + 1)),
+          ...preferred.asMap().entries.map(
+              (entry) => _buildTargetCollegeCard(entry.value, entry.key + 1)),
           const SizedBox(height: 24),
         ],
 
         // Target Colleges Header (UI)
-        _buildCategoryHeader('Target Colleges', 'Strong Probability (60-95%)', Colors.orange.shade600),
+        _buildCategoryHeader('Target Colleges', 'Strong Probability (60-95%)',
+            Colors.orange.shade600),
         const SizedBox(height: 16),
-        
+
         if (colleges.isEmpty)
           _buildEmptyState('No additional target colleges found.')
         else
@@ -839,7 +870,8 @@ class _FinalReportPageState extends State<FinalReportPage> {
                 foregroundColor: Colors.white,
                 elevation: 4,
                 shadowColor: const Color(0xFF4F46E5).withValues(alpha: 0.3),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
@@ -984,7 +1016,8 @@ class _FinalReportPageState extends State<FinalReportPage> {
               ),
               // Status Label
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -1006,9 +1039,14 @@ class _FinalReportPageState extends State<FinalReportPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildScoreMetric('Probability', '${college.scorePercentage}%', Icons.analytics),
-              _buildScoreMetric('Min Cutoff', '${college.cutoff}', Icons.trending_down),
-              _buildScoreMetric('Location', '${(college.locationScore * 100).toInt()}%', Icons.location_on),
+              _buildScoreMetric('Probability', '${college.scorePercentage}%',
+                  Icons.analytics),
+              _buildScoreMetric(
+                  'Min Cutoff', '${college.cutoff}', Icons.trending_down),
+              _buildScoreMetric(
+                  'Location',
+                  '${(college.locationScore * 100).toInt()}%',
+                  Icons.location_on),
             ],
           ),
         ],

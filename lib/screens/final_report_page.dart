@@ -360,6 +360,7 @@ class _FinalReportPageState extends State<FinalReportPage> {
         title: const Text('Final Report'),
         elevation: 0,
         backgroundColor: const Color(0xFF4F46E5),
+        foregroundColor: Colors.white,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

@@ -29,6 +29,7 @@ class ApiService {
   static String? _preferredBaseUrl;
   static List<String>? _cachedDistricts;
   static List<String>? _cachedCourses;
+  static List<CollegeOption>? _cachedColleges;
 
   static final RegExp _nonAlnumPattern = RegExp(r'[^a-z0-9]+');
   static final RegExp _spacePattern = RegExp(r'\s+');
@@ -143,6 +144,13 @@ class ApiService {
     };
 
     return aliases[normalized] ?? raw;
+  }
+
+  /// Pre-fetch and cache common data in the background
+  void warmup() {
+    getDistricts();
+    getCourses();
+    getAllColleges();
   }
 
   Future<RecommendationResult> getRecommendationResult({
@@ -355,6 +363,13 @@ class ApiService {
   }
 
   Future<List<CollegeOption>> getAllColleges() async {
+    // Return cached results if available
+    final cached = _cachedColleges;
+    if (cached != null && cached.isNotEmpty) {
+      debugPrint('Returning ${cached.length} colleges from cache');
+      return List<CollegeOption>.from(cached);
+    }
+
     // First, try the dedicated endpoint
     Object? lastError;
 
@@ -383,6 +398,7 @@ class ApiService {
               .toList();
 
           _preferredBaseUrl = _normalizeBaseUrl(base);
+          _cachedColleges = List<CollegeOption>.from(options);
           debugPrint('Successfully fetched ${options.length} colleges');
           return options;
         }
@@ -415,23 +431,19 @@ class ApiService {
       'Aeronautical Engineering',
     ];
 
-    for (final course in coursesToTry) {
-      try {
-        final options = await getCollegeOptions(
-          preferredCourse: course,
-          district: null,
-          category: null,
-          cutoff: null,
-        );
+    // Execute all requests in parallel
+    final results = await Future.wait(
+      coursesToTry.map((course) => getCollegeOptions(
+            preferredCourse: course,
+            district: null,
+            category: null,
+            cutoff: null,
+          )),
+    );
 
-        for (final option in options) {
-          collegesMap[option.collegeId] = option;
-        }
-
-        debugPrint(
-            'Course "$course": ${options.length} options, Total aggregated: ${collegesMap.length}');
-      } catch (e) {
-        debugPrint('Error fetching colleges for "$course": $e');
+    for (final options in results) {
+      for (final option in options) {
+        collegesMap[option.collegeId] = option;
       }
     }
 
@@ -439,6 +451,7 @@ class ApiService {
 
     if (allColleges.isNotEmpty) {
       allColleges.sort((a, b) => a.collegeName.compareTo(b.collegeName));
+      _cachedColleges = List<CollegeOption>.from(allColleges);
       debugPrint(
           'Successfully aggregated ${allColleges.length} unique colleges');
       return allColleges;

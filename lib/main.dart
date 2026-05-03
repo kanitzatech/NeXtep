@@ -12,8 +12,14 @@ import 'package:guidex/screens/final_report_page.dart';
 import 'package:guidex/models/recommendation.dart';
 import 'package:guidex/models/recommendation_result.dart';
 
+import 'package:guidex/services/api_service.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Start warming up API cache in background
+  ApiService().warmup();
+
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp().timeout(const Duration(seconds: 5));

@@ -26,7 +26,8 @@ public interface CutoffHistoryRepository extends JpaRepository<CutoffHistory, Cu
             "END AS cutoff, " +
             "COALESCE(c.city, '') AS city, " +
             "COALESCE(c.district, '') AS district, " +
-            "ch.branch_name AS branch_code " +
+            "ch.branch_name AS branch_code, " +
+            "COALESCE(c.hostel_available, false) AS hostel_available " +
             "FROM cutoff_history ch " +
             "LEFT JOIN colleges c ON ch.college_name = c.college_name " +
             "WHERE (CASE " +

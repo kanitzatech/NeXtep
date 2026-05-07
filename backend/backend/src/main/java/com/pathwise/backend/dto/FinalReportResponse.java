@@ -42,6 +42,8 @@ public class FinalReportResponse {
         private String chanceLabel;  // "High (80-95%)"
         private Double probability;
         private String district;
+        private String reason;
+        private Boolean isAvailable;
     }
     
     @Getter
@@ -55,6 +57,7 @@ public class FinalReportResponse {
         private Double scorePercentage;
         private String chanceLabel;  // "Strong Chance", "Moderate", "Dream"
         private String district;
+        private Double cutoff;
         
         // Score breakdown
         private Double cutoffScore;

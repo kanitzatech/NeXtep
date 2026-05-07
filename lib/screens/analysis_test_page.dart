@@ -69,7 +69,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   String _hostelPreference = ''; // 'Yes' or 'No'
   final List<String> _assignedDepartments = [];
 
-
   final List<String> _fallbackCourses = [
     'Computer Science Engineering',
     'Information Technology',
@@ -240,10 +239,18 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     return trimmed;
   }
 
+  bool _isExcludedCourse(String courseName) {
+    final lower = courseName.toLowerCase();
+    return lower.contains('applied engineering') ||
+        lower.contains('food technology') ||
+        lower.contains('hotel management') ||
+        lower.contains('unknow');
+  }
+
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize with mock data immediately so the search box is ready in 0 seconds.
     // The background fetch in _loadCollegeOptions will silently update it with real data.
     _allColleges = _getMockColleges();
@@ -376,7 +383,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
     for (final rawCourse in resolved) {
       final display = _toFullCourseName(rawCourse);
-      if (display.isEmpty) {
+      if (display.isEmpty || _isExcludedCourse(display)) {
         continue;
       }
       displayToQuery.putIfAbsent(display, () => rawCourse.trim());
@@ -438,7 +445,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       }
 
       final display = _toFullCourseName(raw);
-      if (display.isEmpty) {
+      if (display.isEmpty || _isExcludedCourse(display)) {
         continue;
       }
 
@@ -536,7 +543,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       final colleges = await _apiService.getAllColleges().timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          debugPrint('⚠️ Timeout fetching all colleges, falling back to mock data.');
+          debugPrint(
+              '⚠️ Timeout fetching all colleges, falling back to mock data.');
           return <CollegeOption>[];
         },
       );
@@ -550,10 +558,12 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
         _allColleges = allColleges;
       });
 
-      debugPrint('✅ Loaded ${_allColleges.length} colleges for preference selection.');
+      debugPrint(
+          '✅ Loaded ${_allColleges.length} colleges for preference selection.');
 
       if (colleges.isEmpty) {
-        debugPrint('⚠️ Backend returned no colleges. Using mock data (${_allColleges.length} colleges).');
+        debugPrint(
+            '⚠️ Backend returned no colleges. Using mock data (${_allColleges.length} colleges).');
       }
     } catch (e) {
       debugPrint('Error loading college options: $e');
@@ -606,7 +616,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     if (email.isEmpty || !emailRegex.hasMatch(email)) {
       setState(() => _fieldErrors['email'] = true);
       _emailFocusNode.requestFocus();
-      _showSnackBar('Please enter a valid email address (e.g. name@example.com)');
+      _showSnackBar(
+          'Please enter a valid email address (e.g. name@example.com)');
       return false;
     }
 
@@ -694,7 +705,11 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
   }
 
   bool _validateStep3() {
-    // Validate Step 3 (3/3): Interest area, district, category, and hostel preference
+    // Validate Step 3 (3/3): College selection, interest area, district, category, and hostel preference
+    if (_selectedPreferredColleges.isEmpty) {
+      _showSnackBar('Please select at least one preferred college');
+      return false;
+    }
     if (_selectedInterest.isEmpty) {
       _showSnackBar('Please select an area of interest');
       return false;
@@ -783,7 +798,10 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
         );
 
         // Collect ALL colleges from both buckets so we can find the user's picks
-        final allFromBackend = [...result.preferredColleges, ...result.safeColleges];
+        final allFromBackend = [
+          ...result.preferredColleges,
+          ...result.safeColleges
+        ];
 
         // Build a lookup map: normalised name → Recommendation
         final backendByName = <String, Recommendation>{};
@@ -845,7 +863,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
         // Sort by probability descending
         best5Colleges.sort((a, b) => b.probability.compareTo(a.probability));
-
       } catch (e) {
         debugPrint('Backend API failed: $e');
         if (!mounted) return;
@@ -862,8 +879,10 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
 
       if (best5Colleges.isEmpty) {
         _showSnackBar(
-          'Please select up to 5 preferred colleges before searching.',
+          'Failed to process selected colleges. Please try again.',
         );
+        setState(() => _isLoading = false);
+        return;
       }
 
       Navigator.pushNamed(context, AppRoutes.finalReport, arguments: {
@@ -1543,10 +1562,12 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           children: [
             GestureDetector(
               onTap: () {
-                setLocalState(() => _collegeDropdownOpen = !_collegeDropdownOpen);
+                setLocalState(
+                    () => _collegeDropdownOpen = !_collegeDropdownOpen);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
@@ -1599,13 +1620,13 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                     ),
                     const SizedBox(width: 12),
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEFF6FF),
                         borderRadius: BorderRadius.circular(6),
-                        border:
-                            Border.all(color: const Color(0xFFBFDBFE), width: 1),
+                        border: Border.all(
+                            color: const Color(0xFFBFDBFE), width: 1),
                       ),
                       child: Text(
                         '${_selectedPreferredColleges.length}/$_maxPreferredColleges',
@@ -1618,7 +1639,9 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      _collegeDropdownOpen ? Icons.expand_less : Icons.expand_more,
+                      _collegeDropdownOpen
+                          ? Icons.expand_less
+                          : Icons.expand_more,
                       color: Colors.grey.shade600,
                       size: 24,
                     ),
@@ -1686,9 +1709,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     final filtered = query.isEmpty
         ? _allColleges
         : _allColleges
-            .where((college) => college.collegeName
-                .toLowerCase()
-                .contains(query))
+            .where(
+                (college) => college.collegeName.toLowerCase().contains(query))
             .toList();
 
     if (filtered.isEmpty) {
@@ -1764,7 +1786,7 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                   }
                 }
               });
-              // We also need to call the parent's setState if other parts of the UI 
+              // We also need to call the parent's setState if other parts of the UI
               // (like the summary text) need to update.
               setState(() {});
             },
@@ -1773,7 +1795,6 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       },
     );
   }
-
 
   List<CollegeOption> _getMockColleges() {
     // Real Tamil Nadu Engineering Colleges only (300 colleges)
@@ -1793,7 +1814,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           collegeId: '6', collegeName: 'Manipal Institute of Technology'),
 
       // Top Private Colleges - Chennai
-      const CollegeOption(collegeId: '7', collegeName: 'PSG College of Technology'),
+      const CollegeOption(
+          collegeId: '7', collegeName: 'PSG College of Technology'),
       const CollegeOption(
           collegeId: '8', collegeName: 'Thiagarajar College of Engineering'),
       const CollegeOption(
@@ -1806,15 +1828,18 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       const CollegeOption(
           collegeId: '12',
           collegeName: 'Saveetha Institute of Medical and Technical Sciences'),
-      const CollegeOption(collegeId: '13', collegeName: 'KCG College of Technology'),
+      const CollegeOption(
+          collegeId: '13', collegeName: 'KCG College of Technology'),
       const CollegeOption(
           collegeId: '14', collegeName: 'Rajalakshmi Engineering College'),
-      const CollegeOption(collegeId: '15', collegeName: 'RMK College of Engineering'),
+      const CollegeOption(
+          collegeId: '15', collegeName: 'RMK College of Engineering'),
       const CollegeOption(
           collegeId: '16', collegeName: 'Easwari Engineering College'),
       const CollegeOption(
           collegeId: '17', collegeName: 'Sri Ramakrishna Engineering College'),
-      const CollegeOption(collegeId: '18', collegeName: 'KMEA Engineering College'),
+      const CollegeOption(
+          collegeId: '18', collegeName: 'KMEA Engineering College'),
       const CollegeOption(
           collegeId: '19',
           collegeName: 'Vel Tech Rangarajan Dr. Sagunthala R&D Institute'),
@@ -1831,8 +1856,10 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           collegeName: 'Meenakshi Academy of Higher Education'),
       const CollegeOption(
           collegeId: '24', collegeName: 'Jeppiaar Engineering College'),
-      const CollegeOption(collegeId: '25', collegeName: 'KM College of Engineering'),
-      const CollegeOption(collegeId: '26', collegeName: 'SSN College of Engineering'),
+      const CollegeOption(
+          collegeId: '25', collegeName: 'KM College of Engineering'),
+      const CollegeOption(
+          collegeId: '26', collegeName: 'SSN College of Engineering'),
       const CollegeOption(
           collegeId: '27',
           collegeName: 'Loyola-ICAM College of Engineering and Technology'),
@@ -1850,12 +1877,14 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           collegeId: '32', collegeName: 'Madras Institute of Technology'),
       const CollegeOption(
           collegeId: '33', collegeName: 'Alagappa College of Technology'),
-      const CollegeOption(collegeId: '34', collegeName: 'ACE Engineering College'),
+      const CollegeOption(
+          collegeId: '34', collegeName: 'ACE Engineering College'),
       const CollegeOption(
           collegeId: '35', collegeName: 'Adhiparasakthi Engineering College'),
       const CollegeOption(
           collegeId: '36', collegeName: 'Adithya Institute of Technology'),
-      const CollegeOption(collegeId: '37', collegeName: 'Agni College of Technology'),
+      const CollegeOption(
+          collegeId: '37', collegeName: 'Agni College of Technology'),
       const CollegeOption(
           collegeId: '38',
           collegeName: 'Akshaya Institute of Engineering and Technology'),
@@ -1886,7 +1915,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       const CollegeOption(
           collegeId: '50',
           collegeName: 'Apollo Institute of Engineering and Technology'),
-      const CollegeOption(collegeId: '51', collegeName: 'Arasu Engineering College'),
+      const CollegeOption(
+          collegeId: '51', collegeName: 'Arasu Engineering College'),
       const CollegeOption(
           collegeId: '52',
           collegeName: 'Arulmigu Meenakshi College of Engineering'),
@@ -1898,7 +1928,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           collegeName: 'Sri Krishna College of Engineering and Technology'),
       const CollegeOption(
           collegeId: '55', collegeName: 'Adhiyamaan College of Engineering'),
-      const CollegeOption(collegeId: '56', collegeName: 'KVN College of Engineering'),
+      const CollegeOption(
+          collegeId: '56', collegeName: 'KVN College of Engineering'),
       const CollegeOption(
           collegeId: '57', collegeName: 'Arun College of Engineering'),
       const CollegeOption(
@@ -1934,7 +1965,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
           collegeId: '70', collegeName: 'Jawahar College of Engineering'),
       const CollegeOption(
           collegeId: '71', collegeName: 'IITA Institute of Technology'),
-      const CollegeOption(collegeId: '72', collegeName: 'ITS Engineering College'),
+      const CollegeOption(
+          collegeId: '72', collegeName: 'ITS Engineering College'),
       const CollegeOption(
           collegeId: '73', collegeName: 'Hermits College of Engineering'),
       const CollegeOption(

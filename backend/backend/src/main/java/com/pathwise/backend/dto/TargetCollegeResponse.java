@@ -34,6 +34,7 @@ public class TargetCollegeResponse {
         private Double college_cutoff;
         private Double probability;
         private String chance_label;
+        private String reason;
     }
 
     /**

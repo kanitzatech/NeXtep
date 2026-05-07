@@ -46,6 +46,8 @@ class SafeCollegeResponse {
   final String? district;
   final double probability;
   final String chanceLabel;
+  final String reason;
+  final bool isAvailable;
 
   SafeCollegeResponse({
     required this.collegeName,
@@ -54,6 +56,8 @@ class SafeCollegeResponse {
     this.district,
     required this.probability,
     required this.chanceLabel,
+    this.reason = '',
+    this.isAvailable = true,
   });
 
   factory SafeCollegeResponse.fromJson(Map<String, dynamic> json) {
@@ -64,6 +68,8 @@ class SafeCollegeResponse {
       district: json['district'],
       probability: (json['probability'] as num?)?.toDouble() ?? 0,
       chanceLabel: json['chanceLabel'] ?? '',
+      reason: json['reason'] ?? '',
+      isAvailable: json['isAvailable'] ?? true,
     );
   }
 }
@@ -81,6 +87,11 @@ class TargetCollegeResponse {
   final double categoryScore;
   final double preferenceBonus;
   final double cutoff;
+  // New fields for strict probability algorithm
+  final double? probability;
+  final String? reason;
+  final double? matchScore;
+  final List<String>? matchReasons;
 
   TargetCollegeResponse({
     required this.collegeName,
@@ -95,6 +106,10 @@ class TargetCollegeResponse {
     required this.categoryScore,
     required this.preferenceBonus,
     required this.cutoff,
+    this.probability,
+    this.reason,
+    this.matchScore,
+    this.matchReasons,
   });
 
   factory TargetCollegeResponse.fromJson(Map<String, dynamic> json) {
@@ -111,6 +126,10 @@ class TargetCollegeResponse {
       categoryScore: (json['categoryScore'] as num?)?.toDouble() ?? 0,
       preferenceBonus: (json['preferenceBonus'] as num?)?.toDouble() ?? 0,
       cutoff: (json['cutoff'] as num?)?.toDouble() ?? 0,
+      probability: (json['probability'] as num?)?.toDouble(),
+      reason: json['reason'],
+      matchScore: (json['matchScore'] as num?)?.toDouble(),
+      matchReasons: (json['matchReasons'] as List?)?.cast<String>(),
     );
   }
 }

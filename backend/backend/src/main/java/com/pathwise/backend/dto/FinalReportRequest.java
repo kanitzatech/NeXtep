@@ -1,16 +1,35 @@
 package com.pathwise.backend.dto;
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString
 public class FinalReportRequest {
-    private String student_name;
+    @JsonProperty("student_name")
+    private String studentName;
+
     private String category;
-    private Double student_cutoff;
-    private String preferred_course;
+
+    @JsonProperty("student_cutoff")
+    private Double studentCutoff;
+
+    @JsonProperty("preferred_course")
+    private String preferredCourse;
+
     private String district;
-    private Boolean hostel_required;
-    private List<String> preferred_college_ids;
-    private List<String> preferred_college_names;
+
+    @JsonProperty("hostel_required")
+    private Boolean hostelRequired;
+
+    @JsonProperty("preferred_college_ids")
+    private List<String> preferredCollegeIds;
+
+    @JsonProperty("preferred_college_names")
+    private List<String> preferredCollegeNames;
 }

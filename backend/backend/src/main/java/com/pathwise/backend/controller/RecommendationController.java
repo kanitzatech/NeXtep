@@ -100,7 +100,7 @@ public class RecommendationController {
             @RequestBody com.pathwise.backend.dto.FinalReportRequest request) {
         
         // Basic validation
-        if (request.getCategory() == null || request.getStudent_cutoff() == null) {
+        if (request.getCategory() == null || request.getStudentCutoff() == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
@@ -109,6 +109,7 @@ public class RecommendationController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
+        System.out.println("Final Report Request received: " + request);
         return ResponseEntity.ok(recommendationService.generateFinalReport(request));
     }
 

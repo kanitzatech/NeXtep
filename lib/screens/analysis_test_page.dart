@@ -581,7 +581,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     // Reset all error states
     final newErrors = {
       'name': _nameController.text.trim().isEmpty ||
-          _nameController.text.trim().length < 2,
+          _nameController.text.trim().length < 2 ||
+          !RegExp(r'^[a-zA-Z\s.]+$').hasMatch(_nameController.text.trim()),
       'age': _ageController.text.trim().isEmpty ||
           (int.tryParse(_ageController.text.trim()) ?? 0) < 17 ||
           (int.tryParse(_ageController.text.trim()) ?? 0) > 100,
@@ -596,7 +597,8 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
     // Find first empty/invalid field and focus on it
     if (newErrors['name'] == true) {
       _nameFocusNode.requestFocus();
-      _showSnackBar('Please enter a valid name (at least 2 characters)');
+      _showSnackBar(
+          'Please enter a valid name (only alphabets and dots allowed)');
       return false;
     }
     if (newErrors['age'] == true) {
@@ -610,15 +612,17 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
       return false;
     }
 
-    // Email validation using Regex
+    // Email is OPTIONAL - skip validation if empty
     final email = _emailController.text.trim();
-    final emailRegex = RegExp(r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+');
-    if (email.isEmpty || !emailRegex.hasMatch(email)) {
-      setState(() => _fieldErrors['email'] = true);
-      _emailFocusNode.requestFocus();
-      _showSnackBar(
-          'Please enter a valid email address (e.g. name@example.com)');
-      return false;
+    if (email.isNotEmpty) {
+      final emailRegex = RegExp(r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+');
+      if (!emailRegex.hasMatch(email)) {
+        setState(() => _fieldErrors['email'] = true);
+        _emailFocusNode.requestFocus();
+        _showSnackBar(
+            'Please enter a valid email address (e.g. name@example.com)');
+        return false;
+      }
     }
 
     // Clear errors if all valid
@@ -1447,6 +1451,9 @@ class _AnalysisTestPageState extends State<AnalysisTestPage> {
                 : (isEmail ? TextInputType.emailAddress : TextInputType.text),
             maxLength: isName ? 50 : (isAge ? 3 : (isNumber ? 3 : null)),
             inputFormatters: [
+              if (isName)
+                FilteringTextInputFormatter.allow(
+                    RegExp(r'[a-zA-Z\s.]')), // Only alphabets, spaces, and dots
               if (isName) LengthLimitingTextInputFormatter(50),
               if (isAge) FilteringTextInputFormatter.digitsOnly,
               if (isAge) LengthLimitingTextInputFormatter(3),

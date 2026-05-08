@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:guidex/app_routes.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -32,7 +33,17 @@ class _SplashScreenState extends State<SplashScreen>
 
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed(AppRoutes.onboarding);
+
+      // Check if user is already logged in
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        // User is logged in → Go to main app
+        Navigator.of(context).pushReplacementNamed(AppRoutes.userCategory);
+      } else {
+        // User not logged in → Go to onboarding/login
+        Navigator.of(context).pushReplacementNamed(AppRoutes.onboarding);
+      }
     });
   }
 
@@ -138,9 +149,14 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                               ShaderMask(
                                 blendMode: BlendMode.srcIn,
-                                shaderCallback: (bounds) => const LinearGradient(
-                                  colors: [Color(0xFF2979FF), Color(0xFFB388FF)],
-                                ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
+                                shaderCallback: (bounds) =>
+                                    const LinearGradient(
+                                  colors: [
+                                    Color(0xFF2979FF),
+                                    Color(0xFFB388FF)
+                                  ],
+                                ).createShader(Rect.fromLTWH(
+                                        0, 0, bounds.width, bounds.height)),
                                 child: const Text(
                                   "next step",
                                   style: TextStyle(
